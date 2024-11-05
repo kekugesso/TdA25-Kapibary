@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from .models import Game
 from .serializers import GameSerializer
 
+
 class AllGamesView(APIView):
     def get(self, request):
         games = Game.objects.all()
@@ -14,6 +15,17 @@ class AllGamesView(APIView):
 
     def post(self, request):
         data = request.data
+        board = data.get('board')
+        if (len(board) != 15):
+            return Response({"message": "Invalid board size"}, status=422)
+        else:
+            for line in board:
+                if (len(line) != 15):
+                    return Response({"message": "Invalid board size"}, status=422)
+                else:
+                    for cell in line:
+                        if (cell != "" and cell != "X" and cell != "O"):
+                            return Response({"message": "Invalid board content"}, status=422)
         data['uuid'] = str(uuid.uuid4())
         data['createdAt'] = datetime.now()
         data['updatedAt'] = datetime.now()
@@ -43,6 +55,17 @@ class GameView(APIView):
     def put(self, request, uuid):
         game = get_object_or_404(Game, uuid=uuid)
         data = request.data
+        board = data.get('board')
+        if (len(board) != 15):
+            return Response({"message": "Invalid board size"}, status=422)
+        else:
+            for line in board:
+                if (len(line) != 15):
+                    return Response({"message": "Invalid board size"}, status=422)
+                else:
+                    for cell in line:
+                        if (cell != "" and cell != "X" and cell != "O"):
+                            return Response({"message": "Invalid board content"}, status=422)
         data['updatedAt'] = datetime.now()
         serializer = GameSerializer(game, data=data)
         if serializer.is_valid():

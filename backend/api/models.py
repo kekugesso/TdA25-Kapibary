@@ -16,12 +16,6 @@ class Dificulty(models.TextChoices):
     EXTREME = "extreme"
 
 
-class Symbol(models.TextChoices):
-    X = "X"
-    O = "O"
-    EMPTY = ""
-
-
 class Game(models.Model):
     uuid = models.UUIDField(primary_key=True)
     name = models.TextField(null=False)
