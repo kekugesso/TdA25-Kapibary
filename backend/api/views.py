@@ -108,3 +108,7 @@ class GameView(APIView):
 
 def FrontForFun(request):
     return HttpResponse("Front for fun", content_type="text/html")
+
+
+def SpecificFrontForFun(request):
+    return HttpResponse("Specific front for fun", content_type="text/html")
