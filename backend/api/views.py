@@ -12,9 +12,9 @@ class AllGamesView(APIView):
     def get(self, request):
         games = Game.objects.all()
         serializer = GameSerializer(games, many=True)
-        matrix = [["" for _ in range(15)] for _ in range(15)]
         result = []
         for game in serializer.data:
+            matrix = [["" for _ in range(15)] for _ in range(15)]
             for symbol in game.get("board"):
                 matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
             game["board"] = matrix
