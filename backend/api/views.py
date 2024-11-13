@@ -110,5 +110,5 @@ def FrontForFun(request):
     return HttpResponse("Front for fun", content_type="text/html")
 
 
-def SpecificFrontForFun(request):
+def SpecificFrontForFun(request, uuid1):
     return HttpResponse("Specific front for fun", content_type="text/html")
