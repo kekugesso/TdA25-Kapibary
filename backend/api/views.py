@@ -41,8 +41,12 @@ class AllGamesView(APIView):
             data["gameState"] = "midgame"
         else:
             data["gameState"] = "opening"
-        if can_win_next_move(board, "X") or can_win_next_move(board, "O"):
-            data["gameState"] = "endgame"
+        if can_win_next_move(board, "X"):
+            if (countx == counto):
+                data["gameState"] = "endgame"
+        elif can_win_next_move(board, "O"):
+            if (countx - counto == 1):
+                data["gameState"] = "endgame"
         data["uuid"] = str(uuid.uuid4())
         serializer = GameSerializer(data=data)
         if serializer.is_valid():
@@ -123,10 +127,12 @@ class GameView(APIView):
             data["gameState"] = "midgame"
         else:
             data["gameState"] = "opening"
-        print(can_win_next_move(board_main, "X"))
-        print(can_win_next_move(board_main, "O"))
-        if can_win_next_move(board_main, "X") or can_win_next_move(board_main, "O"):
-            data["gameState"] = "endgame"
+        if can_win_next_move(board_main, "X"):
+            if (countx == counto):
+                data["gameState"] = "endgame"
+        elif can_win_next_move(board_main, "O"):
+            if (countx - counto == 1):
+                data["gameState"] = "endgame"
         serializer = GameSerializer(game, data=data)
         if serializer.is_valid():
             serializer.save()
