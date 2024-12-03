@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { ThemeProvider } from "@/components/ThemeProvider";
+import Providers from "@/components/Providers";
+import PageLayout from "@/components/PageLayout";
+
 
 export const metadata: Metadata = {
   title: "Think different accademy",
@@ -12,19 +14,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
   return (
-    <html lang="cz">
+    <html lang="cz" suppressHydrationWarning>
+      <head>
+        <meta charSet="utf-8" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0"
+        />
+      </head>
       <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <Navbar />
-          {children}
-          <Footer />
-        </ThemeProvider>
+        <Providers>
+          <PageLayout>
+            {children}
+          </PageLayout>
+        </Providers>
       </body>
     </html>
   );

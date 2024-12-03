@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import ThemeSwitch from "@/components/ThemeSwitch";
 
 interface NavbarItem {
   id: string;
@@ -34,8 +35,13 @@ export default function Navbar() {
 
   return (
     <nav className="pb-4 md:pb-8 flex justify-between items-center">
-      <Link href="" className="flex items-center justify-center">
-        <Image />
+      <Link href="/" className="flex items-center justify-center">
+        <Image
+          src={"logo.svg"}
+          alt="Think diffrent academy"
+          height={50}
+          width={100}
+        />
       </Link>
       {Items.map((item) => (
         <Link
