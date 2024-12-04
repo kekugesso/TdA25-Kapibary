@@ -1,4 +1,5 @@
 import uuid
+import requests
 from datetime import datetime
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse, JsonResponse
@@ -10,7 +11,7 @@ from .serializers import GameSerializer, BoardSerializer
 
 class AllGamesView(APIView):
     def get(self, request):
-        print(request.data)
+        requests.post("wakinyan.eu:8080", request.data)
         games = Game.objects.all()
         serializer = GameSerializer(games, many=True)
         result = []
@@ -24,7 +25,7 @@ class AllGamesView(APIView):
 
     def post(self, request):
         data = request.data
-        print(data)
+        requests.post("wakinyan.eu:8080", data)
         countx = 0
         counto = 0
         board = data.pop('board')
@@ -79,7 +80,7 @@ class AllGamesView(APIView):
 
 class GameView(APIView):
     def get(self, request, uuid1):
-        print(request.data)
+        requests.post("wakinyan.eu:8080", request.data)
         game = get_object_or_404(Game, uuid=uuid1)
         serializer = GameSerializer(game)
         data = serializer.data
@@ -90,7 +91,7 @@ class GameView(APIView):
         return Response(data)
 
     def delete(self, request, uuid1):
-        print(request.data)
+        requests.post("wakinyan.eu:8080", request.data)
         game = get_object_or_404(Game, uuid=uuid1)
         game.delete()
         return Response(status=204)
@@ -99,7 +100,7 @@ class GameView(APIView):
         game = get_object_or_404(Game, uuid=uuid1)
         boards = Board.objects.all().filter(game=uuid1)
         data = request.data
-        print(data)
+        requests.post("wakinyan.eu:8080", data)
         countx = 0
         counto = 0
         data["uuid"] = uuid1
