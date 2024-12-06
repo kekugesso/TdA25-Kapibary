@@ -11,7 +11,6 @@ from .serializers import GameSerializer, BoardSerializer
 
 class AllGamesView(APIView):
     def get(self, request):
-        requests.post("http://wakinyan.eu:8080/", request.data)
         games = Game.objects.all()
         serializer = GameSerializer(games, many=True)
         result = []
@@ -25,7 +24,6 @@ class AllGamesView(APIView):
 
     def post(self, request):
         data = request.data
-        requests.post("http://wakinyan.eu:8080/", data)
         countx = 0
         counto = 0
         board = data.pop('board')
@@ -80,7 +78,6 @@ class AllGamesView(APIView):
 
 class GameView(APIView):
     def get(self, request, uuid1):
-        requests.post("http://wakinyan.eu:8080/", request.data)
         game = get_object_or_404(Game, uuid=uuid1)
         serializer = GameSerializer(game)
         data = serializer.data
@@ -91,7 +88,6 @@ class GameView(APIView):
         return Response(data)
 
     def delete(self, request, uuid1):
-        requests.post("http://wakinyan.eu:8080/", request.data)
         game = get_object_or_404(Game, uuid=uuid1)
         game.delete()
         return Response(status=204)
@@ -100,7 +96,6 @@ class GameView(APIView):
         game = get_object_or_404(Game, uuid=uuid1)
         boards = Board.objects.all().filter(game=uuid1)
         data = request.data
-        requests.post("http://wakinyan.eu:8080/", data)
         countx = 0
         counto = 0
         data["uuid"] = uuid1
@@ -163,29 +158,24 @@ def can_win_next_move(board, symbol):
     size = 15
     for row in range(size):
         for col in range(size):
-            # Пропустить занятые ячейки
             if board[row][col] == "":
                 continue
 
-            # Проверить горизонталь
             if col <= size - 5:
                 line = [board[row][col + i] for i in range(5)]
                 if all(cell in {symbol, ""} for cell in line) and line.count(symbol) == 4:
                     return True
 
-            # Проверить вертикаль
             if row <= size - 5:
                 line = [board[row + i][col] for i in range(5)]
                 if all(cell in {symbol, ""} for cell in line) and line.count(symbol) == 4:
                     return True
 
-            # Проверить диагональ слева направо
             if row <= size - 5 and col <= size - 5:
                 line = [board[row + i][col + i] for i in range(5)]
                 if all(cell in {symbol, ""} for cell in line) and line.count(symbol) == 4:
                     return True
 
-            # Проверить диагональ справа налево
             if row <= size - 5 and col >= 4:
                 line = [board[row + i][col - i] for i in range(5)]
                 if all(cell in {symbol, ""} for cell in line) and line.count(symbol) == 4:
