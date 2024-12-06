@@ -1,7 +1,8 @@
 import uuid
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.http import HttpResponse, JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -145,6 +146,33 @@ class GameView(APIView):
             matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
         result["board"] = matrix
         return Response(result, status=200)
+
+
+class FilterAPIView(APIView):
+    def get(self, request):
+        data = request.data
+        result = []
+        if (data.get("updatedAt") != "24hours" and data.get("updatedAt") != "7days" and data.get("updatedAt") != "1month" and data.get("updatedAt") != "3months"):
+            return Response({"message": "Invalid updatedAt"}, status=422)
+        for dif in data.get("difficulty"):
+            if(dif != "beginner" and dif != "medium" and dif != "easy" and dif != "extreme" and dif != "hard"):
+                return Response({"message": "Invalid difficulty"}, status=422)
+            if (data.get("updatedAt") == "24hours"):
+                games = Game.objects.filter(difficulty=dif, updatedAt__gt=timezone.now() - timedelta(hours=24))
+            elif (data.get("updatedAt") == "7days"):
+                games = Game.objects.filter(difficulty=dif, updatedAt__gt=timezone.now() - timedelta(days=7))
+            elif (data.get("updatedAt") == "1month"):
+                games = Game.objects.filter(difficulty=dif, updatedAt__gt=timezone.now() - timedelta(days=30))
+            elif (data.get("updatedAt") == "3months"):
+                games = Game.objects.filter(difficulty=dif, updatedAt__gt=timezone.now() - timedelta(days=90))
+            serializer = GameSerializer(games, many=True)
+            for game in serializer.data:
+                matrix = [["" for _ in range(15)] for _ in range(15)]
+                for symbol in game.get("board"):
+                    matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
+                game["board"] = matrix
+                result.append(game)
+        return Response(result)
 
 
 def FrontForFun(request):
