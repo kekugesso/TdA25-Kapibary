@@ -34,27 +34,28 @@ export default function Navbar() {
   ];
 
   return (
-    <nav className="pb-4 md:pb-8 flex justify-between items-center">
+    <nav className="flex justify-evenly items-center text-white bg-blue-light dark:bg-blue-dark">
       <Link href="/" className="flex items-center justify-center">
         <Image
           src={"logo.svg"}
           alt="Think diffrent academy"
           height={50}
-          width={100}
+          width={250}
         />
       </Link>
+      <div className="w-[20%]"></div>
       {Items.map((item) => (
         <Link
           key={item.id}
           href={item.href}
-          className={`text-lg font-semibold text-gray-800 hover:text-gray-900 ${
-            isCurrent(item.href) ? "text-gray-900" : ""
+          className={`text-lg font-semibold hover:text-gray-300 hover:scale-105 ease-in-out hover:delay-300 ${
+            isCurrent(item.href) ? "text-gray-300" : ""
           }`}
         >
           {item.label}
         </Link>
       ))}
-      <ThemeSwitch />
+      <ThemeSwitch className="py-1 md:py-2" />
     </nav>
   );
 }
