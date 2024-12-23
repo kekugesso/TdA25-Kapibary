@@ -8,10 +8,12 @@ export default function PageLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <>
-      <div className="wrapper">
-        <Navbar />
+      <main className="wrapper">
+        <header>
+          <Navbar />
+        </header>
         {children}
-      </div>
+      </main>
       <Footer />
     </>
   );
