@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Providers from "@/components/Providers";
-import PageLayout from "@/components/PageLayout";
+import Providers from "@/components/core/Providers";
+import PageLayout from "@/components/core/PageLayout";
 
 export const metadata: Metadata = {
   title: "Think different accademy",

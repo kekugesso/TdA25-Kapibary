@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import ThemeSwitch from "@/components/ThemeSwitch";
+import ThemeSwitch from "@/components/core/ThemeSwitch";
 
 interface NavbarItem {
   id: string;
@@ -19,7 +19,7 @@ export default function Navbar() {
     {
       id: "about",
       label: "O nás",
-      href: "/about",
+      href: "/#about-us",
     },
     {
       id: "new-game",
