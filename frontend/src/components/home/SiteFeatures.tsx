@@ -4,19 +4,19 @@ import FeatureItem from "@/components/home/types";
 export default function SiteFeatures() {
   const items: FeatureItem[] = [
     {
-      img: { src: "/img/f1", alt: "Bulb Think" },
+      img: { src: "/img/bulb_think.svg", alt: "Bulb Think" },
       title: "Výzvy pro začátečníky i experty",
       detail:
         "Od jednoduchých her pro nováčky až po strategické pro experty – zvolte si svou obtížnost.",
     },
     {
-      img: { src: "/img/f2", alt: "Bulb Play" },
+      img: { src: "/img/bulb_play.svg", alt: "Bulb Play" },
       title: "Hrajte proti přátelům na jednom zařízení",
       detail:
         "Užijte si lokální multiplayer a soutěžte s přáteli v piškvorkách na jednom zařízení.",
     },
     {
-      img: { src: "/img/f3", alt: "Bulb Idea" },
+      img: { src: "/img/bulb_idea.svg", alt: "Bulb Idea" },
       title: "Hrajte a zdokonalujte své dovednosti",
       detail:
         "Ponořte se do světa piškvorkových hlavolamů ještě dnes a posouvejte své schopnosti na novou úroveň.",
@@ -42,8 +42,8 @@ export default function SiteFeatures() {
               {...item.img}
               width={50}
               height={50}
-              className="flex flex-center text-gray-500"
-              /* loading="eager" */
+              className="flex flex-center text-gray-500 min-w-[50px] min-h-[50px]"
+              loading="eager"
             />
             <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">
               {item.title}

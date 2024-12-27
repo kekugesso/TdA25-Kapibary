@@ -12,17 +12,21 @@ export default function Greeter() {
   return (
     <article
       id="greeter"
-      className="flex flex-col flex-center h-[calc(100dvh-var(--navbar-height))] text-center text-balance"
+      className="flex flex-col flex-center h-[calc(100dvh-var(--navbar-height))] text-center text-balance bg-cover bg-center"
+      style={{
+        backgroundImage:
+          "linear-gradient(#00000081, #00000080), url('/img/landing_page.png')",
+      }}
     >
       <h1
-        className={`font-semibold text-5xl mb-5 px-4 md:max-w-[60%] leading-[60px] ${buttonClick && "animate-fade-up animate-duration-[500ms] animate-ease-in-out"}`}
+        className={`font-semibold text-5xl mb-5 px-4 md:max-w-[60%] leading-[60px] text-white ${buttonClick && "animate-fade-up animate-duration-[500ms] animate-ease-in-out"}`}
       >
         {buttonClick
           ? "Jste připraveni ponořit se do hry?"
           : "Rozvíjejte svou mysl s piškvorkovými hádankami"}
       </h1>
       <p
-        className={`font-medium text-xl px-4 md:max-w-[70%] leading-[25px] ${buttonClick && "animate-fade-up animate-duration-[500ms] animate-ease-in-out"}`}
+        className={`font-medium text-xl px-4 md:max-w-[70%] leading-[25px] text-white ${buttonClick && "animate-fade-up animate-duration-[500ms] animate-ease-in-out"}`}
       >
         {buttonClick
           ? "Vyberte si, kam chcete pokračovat. Můžete zahájit novou hru a rovnou se pustit do akce, nebo si prohlédnout seznam zajímavých rozehraných her. Stačí si vybrat!"
