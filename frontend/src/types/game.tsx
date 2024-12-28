@@ -7,3 +7,5 @@ type BoardData = {
   difficulty: difficulty;
   board: BoardType;
 };
+
+export type { BoardType, BoardData };
