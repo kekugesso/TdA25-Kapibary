@@ -16,7 +16,7 @@ export default function Board({
           {row.map((cell, x) => (
             <button
               key={x}
-              className={buttonClass}
+              className={`${buttonClass} ${x % 2 == 0 && "bg-black"}`}
               onClick={() => handleClick(x, y)}
             >
               {cell}
