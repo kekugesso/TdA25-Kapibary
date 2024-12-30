@@ -9,9 +9,7 @@ export default function PageLayout({
   return (
     <>
       <main className="wrapper">
-        <header>
-          <Navbar />
-        </header>
+        <Navbar />
         {children}
       </main>
       <Footer />

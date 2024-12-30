@@ -6,7 +6,7 @@
   --background: #ffffff;
   --foreground: #171717;
   --footer-height: 50px;
-  --navbar-height: 50px;
+  --navbar-height: 60px;
   --page-height: calc(100dvh - var(--footer-height) - var(--navbar-height));
 }
 
@@ -36,7 +36,8 @@ footer {
   justify-content: center;
   align-items: center;
 }
-nav {
+
+header {
   height: var(--navbar-height);
   width: 100%;
 }
@@ -47,6 +48,5 @@ main {
 
 .flex-center {
   justify-content: center;
-  align-items: center;
   align-items: center;
 }
