@@ -12,46 +12,6 @@ interface NavbarItem {
   href: string;
 }
 
-const NavLinks = () => {
-  const path = usePathname();
-  const isCurrent = (href: string) => path === href;
-
-  const Items: NavbarItem[] = [
-    {
-      id: "about",
-      label: "O nás",
-      href: "/#about-us",
-    },
-    {
-      id: "new-game",
-      label: "Nová hra",
-      href: "/game",
-    },
-    {
-      id: "games",
-      label: "Seznam her",
-      href: "/games",
-    },
-  ];
-
-  return (
-    <>
-      {Items.map((item) => (
-        <Link
-          key={item.id}
-          href={item.href}
-          className={`text-lg font-semibold hover:text-gray-300 hover:scale-105 ease-in-out transition-all ${
-            isCurrent(item.href) && "text-gray-300"
-          }`}
-        >
-          {item.label}
-        </Link>
-      ))}
-      <ThemeSwitch />
-    </>
-  );
-};
-
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -68,6 +28,47 @@ export default function Navbar() {
 
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  const NavLinks = () => {
+    const path = usePathname();
+    const isCurrent = (href: string) => path === href;
+
+    const Items: NavbarItem[] = [
+      {
+        id: "about",
+        label: "O nás",
+        href: "/#about-us",
+      },
+      {
+        id: "new-game",
+        label: "Nová hra",
+        href: "/game",
+      },
+      {
+        id: "games",
+        label: "Seznam her",
+        href: "/games",
+      },
+    ];
+
+    return (
+      <>
+        {Items.map((item) => (
+          <Link
+            key={item.id}
+            href={item.href}
+            className={`text-lg font-semibold hover:text-gray-300 hover:scale-105 ease-in-out transition-all ${
+              isCurrent(item.href) && "text-gray-300"
+            }`}
+            onClick={() => setIsOpen(false)}
+          >
+            {item.label}
+          </Link>
+        ))}
+        <ThemeSwitch />
+      </>
+    );
+  };
 
   return (
     <header className="flex justify-between items-center text-white bg-blue-light dark:bg-blue-dark px-3 p-1">
@@ -105,7 +106,7 @@ export default function Navbar() {
         />
       )}
       <div
-        className={`${isOpen ? "translate-x-0" : "translate-x-full"} fixed sm:hidden right-0 top-0 bg-black opacity-75 h-full z-40 w-[30vw] transition-transform`}
+        className={`${isOpen ? "translate-x-0" : "translate-x-full"} fixed sm:hidden right-0 top-0 bg-black opacity-75 h-full z-40 w-[70vw] transition-transform`}
       >
         <nav className="mt-[calc(var(--navbar-height)/1.5)] sm:hidden flex flex-col space-y-3 opacity-100 flex-center">
           <NavLinks />
