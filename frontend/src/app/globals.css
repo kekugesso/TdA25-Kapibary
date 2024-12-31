@@ -7,7 +7,9 @@
   --foreground: #171717;
   --footer-height: 50px;
   --navbar-height: 60px;
-  --page-height: calc(100dvh - var(--footer-height) - var(--navbar-height));
+  --wrapper-height: calc(100dvh - var(--footer-height));
+  --page-height: calc(var(--wrapper-height) - var(--navbar-height));
+  --footer-display: flex;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,7 +26,7 @@ body {
 }
 
 .wrapper {
-  min-height: calc(100dvh - var(--footer-height));
+  min-height: var(--wrapper-height);
   width: 100%;
 }
 
@@ -32,9 +34,15 @@ footer {
   height: var(--footer-height);
   box-sizing: border-box;
   width: 100%;
-  display: flex;
+  display: var(--footer-display);
   justify-content: center;
   align-items: center;
+}
+
+.disable-footer {
+  --footer-display: none;
+  --wrapper-height: 100dvh;
+  --page-height: calc(100dvh - var(--navbar-height));
 }
 
 header {
@@ -42,7 +50,7 @@ header {
   width: 100%;
 }
 
-main {
+article {
   min-height: var(--page-height);
 }
 
