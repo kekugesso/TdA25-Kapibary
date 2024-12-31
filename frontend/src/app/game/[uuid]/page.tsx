@@ -9,7 +9,7 @@ import {
 } from "@/components/core/Modal";
 import Loading from "@/components/core/Loading";
 import GameBoard from "@/components/game/GameBoard";
-import { BoardData } from "@/types/game";
+import { BoardData } from "@/types/board/BoardData";
 import { useRouter } from "next/navigation";
 
 export default function Game(uuid: string) {
