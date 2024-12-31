@@ -9,7 +9,6 @@ interface ModalProps {
 export function Modal({ children, open, onClose }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
-  // Close the dialog when the backdrop is clicked
   const handleBackdropClick = (event: React.MouseEvent<HTMLDialogElement>) => {
     if (dialogRef.current && event.target === dialogRef.current) {
       onClose();
@@ -19,11 +18,11 @@ export function Modal({ children, open, onClose }: ModalProps) {
   return (
     <dialog
       ref={dialogRef}
-      className="fixed inset-0 flex items-center justify-center"
+      className="fixed inset-0 flex items-center justify-center bg-transparent"
       open={open}
       onClick={handleBackdropClick}
     >
-      <div className="flex flex-col justify-between bg-white dark:bg-black-dark rounded-lg shadow-lg w-96 h-72 max-w-lg p-6 relative">
+      <div className="flex flex-col justify-between bg-white dark:bg-black-dark rounded-lg shadow-black shadow-lg w-96 h-72 max-w-lg p-6 relative">
         {children}
         <button
           onClick={onClose}
