@@ -11,8 +11,9 @@ import Loading from "@/components/core/Loading";
 import GameBoard from "@/components/game/GameBoard";
 import { BoardData } from "@/types/board/BoardData";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
-export default function Game(uuid: string) {
+export default function LoadGame(uuid: string) {
   const router = useRouter();
 
   const { isPending, error, data } = useQuery({
@@ -23,11 +24,17 @@ export default function Game(uuid: string) {
         .then((data) => data as BoardData),
   });
 
+  useEffect(() => {
+    if (data) {
+      localStorage.setItem("boardData", JSON.stringify(data));
+    }
+  }, [data]);
+
   const handleClose = () => router.back();
 
   return (
     <>
-      {isPending ? <Loading /> : <GameBoard board={data} />}
+      {isPending ? <Loading /> : <GameBoard />}
       {error && (
         <Modal open={true} onClose={handleClose}>
           <ModalHeader>Error: {error.name}</ModalHeader>
