@@ -11,6 +11,7 @@ import {
 } from "@/components/core/Modal";
 import { useRouter } from "next/navigation";
 import { DifficultyToString } from "@/types/search/difficulty";
+import { Oicon, Xicon } from "@/components/game/Icons";
 
 type Error = {
   name: string;
@@ -72,7 +73,19 @@ export default function GameBoard() {
   return (
     <>
       {board && (
-        <article className="flex flex-center">
+        <article className="flex flex-col sm:flex-row flex-center sm:justify-evenly p-[0.5vw]">
+          <div className="flex sm:hidden flex-col items-center flex-center text-White font-bold text-3xl gap-5">
+            Hraje
+            <div className="flex gap-5">
+              <Xicon turn={turn} width={50} height={50} />
+              <Oicon turn={turn} width={58} height={58} />
+            </div>
+          </div>
+          <div className="hidden sm:flex flex-col flex-center text-White font-bold text-6xl gap-5">
+            Hraje
+            <Xicon turn={turn} width={150} height={150} />
+          </div>
+
           <div className="flex flex-col items-center flex-center">
             <div className="flex justify-between text-2xl font-semibold dark:text-white text-black w-full">
               <p>{board.name}</p>
@@ -95,6 +108,11 @@ export default function GameBoard() {
                 Upravit
               </button>
             </div>
+          </div>
+
+          <div className="hidden sm:flex flex-col items-center flex-center text-White font-bold text-6xl gap-5">
+            Hraje
+            <Oicon turn={turn} width={158} height={158} />
           </div>
         </article>
       )}
