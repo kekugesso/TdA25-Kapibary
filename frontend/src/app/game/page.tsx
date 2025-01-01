@@ -5,11 +5,9 @@ import { difficulty } from "@/types/search/difficulty";
 import GameBoard from "@/components/game/GameBoard";
 import { useEffect, useState } from "react";
 import Loading from "@/components/core/Loading";
+import { CreateMatrix } from "@/components/game/MatrixFunctions";
 
-const CreateMatrix = (x: number, y: number) =>
-  Array.from({ length: y }, () => Array(x).fill(""));
-
-export default function NewGame() {
+export default function Game() {
   const [boardData, setBoardData] = useState<BoardData | null>();
 
   useEffect(() => {
