@@ -42,7 +42,7 @@ export default function Navbar() {
       {
         id: "new-game",
         label: "Nová hra",
-        href: "/game",
+        href: "/new-game",
       },
       {
         id: "games",
