@@ -25,7 +25,7 @@ export default function SiteFeatures() {
 
   return (
     <article id="site-features">
-      <div className="flex flex-col flex-center text-center text-balance p-4 md:pt-24 md:px-24">
+      <div className="flex flex-col flex-center text-center text-balance p-4 md:p-12">
         <h1 className="font-semibold text-3xl mb-5 leading-9">
           Připojte se k zábavě a vyzvěte svou mysl
         </h1>
@@ -42,7 +42,7 @@ export default function SiteFeatures() {
               {...item.img}
               width={50}
               height={50}
-              className="flex flex-center text-gray-500 min-w-[50px] min-h-[50px]"
+              className="flex flex-center text-gray-500"
               loading="eager"
             />
             <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">

@@ -21,8 +21,8 @@ export default function AboutSite() {
         alt="Site picture"
         height={500}
         width={500}
-        // loading="eager"
-        className="flex flex-center text-gray-500 bg-white-darker min-h-[300px] min-w-[300px] md:min-h-[500px] md:min-w-[500px]"
+        loading="eager"
+        className="flex flex-center text-gray-500 bg-white-darker min-h-[300px] min-w-[300px] mid:min-h-[500px] mid:min-w-[500px]"
       />
     </article>
   );

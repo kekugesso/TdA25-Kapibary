@@ -26,7 +26,7 @@ export default function Greeter() {
           : "Rozvíjejte svou mysl s piškvorkovými hádankami"}
       </h1>
       <p
-        className={`font-medium text-xl px-4 md:max-w-[70%] leading-[25px] text-white ${buttonClick && "animate-fade-up animate-duration-[500ms] animate-ease-in-out"}`}
+        className={`font-medium text-xl px-4 md:max-w-[70%] text-white ${buttonClick && "animate-fade-up animate-duration-[500ms] animate-ease-in-out"}`}
       >
         {buttonClick
           ? "Vyberte si, kam chcete pokračovat. Můžete zahájit novou hru a rovnou se pustit do akce, nebo si prohlédnout seznam zajímavých rozehraných her. Stačí si vybrat!"
@@ -41,7 +41,7 @@ export default function Greeter() {
               : gradient +
                 " from-85% translate-x-[50%] opacity-0 pointer-events-none"
           }`}
-          href={"/game"}
+          href={"/new-game"}
         >
           Nová hra
         </Link>

@@ -19,10 +19,18 @@
   }
 }
 
+@font-face {
+  font-family: "Dosis";
+  src: url("/fonts/Dosis-VariableFont_wght.woff2") format("woff2");
+  font-variation-settings: "wght" 375;
+  font-weight: 100 900; /* Define the weight range for the variable font */
+  font-style: normal;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Dosis";
 }
 
 .wrapper {
