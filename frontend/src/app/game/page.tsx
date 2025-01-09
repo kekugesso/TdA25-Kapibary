@@ -27,5 +27,5 @@ export default function Game() {
     }
   }, []);
 
-  return boardData ? <GameBoard /> : <Loading />;
+  return boardData ? <GameBoard data="boardData" /> : <Loading />;
 }
