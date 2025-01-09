@@ -9,7 +9,7 @@ type BoardProps = {
 export default function Board({
   board,
   handleClick,
-  buttonClass = "[--size:calc(99vmin/var(--board-size))] sm:[--size:5vmin] w-[--size] h-[--size]",
+  buttonClass = "[--size:calc(99vmin/var(--board-size))] md:[--size:5vmin] w-[--size] h-[--size]",
 }: BoardProps) {
   return (
     <div

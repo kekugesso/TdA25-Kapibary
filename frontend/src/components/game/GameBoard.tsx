@@ -12,6 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import { DifficultyToString } from "@/types/search/difficulty";
 import { Oicon, Xicon } from "@/components/game/Icons";
+import { GameData } from "@/types/games/GameData";
 
 type Error = {
   name: string;
@@ -19,25 +20,36 @@ type Error = {
   level: "normal" | "fatal";
 };
 
-export default function GameBoard() {
+export default function GameBoard({ data }: { data: string }) {
   const router = useRouter();
   const [board, setBoard] = useState<BoardData | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [turn, setTurn] = useState<"X" | "O">("X");
 
+  const calcActualTurn = (board: BoardData) => {
+    const xCount = board.board.flat().filter((x) => x === "X").length;
+    const oCount = board.board.flat().filter((o) => o === "O").length;
+
+    return xCount > oCount ? "O" : "X";
+  };
+
   document.body.classList.add("disable-footer");
 
   useEffect(() => {
-    const savedBoardData = localStorage.getItem("boardData");
+    if (!data) return;
+    const savedBoardData = localStorage.getItem(data);
+    localStorage.setItem("gameLocation", data);
+    setTurn(savedBoardData ? calcActualTurn(JSON.parse(savedBoardData)) : "X");
 
-    if (savedBoardData) setBoard(JSON.parse(savedBoardData) as BoardData);
+    if (savedBoardData)
+      setBoard(JSON.parse(savedBoardData) as BoardData | GameData);
     else
       setError({
         name: "Data error",
         message: "Couldn't get data from local storage",
         level: "fatal",
       });
-  }, []);
+  }, [data]);
 
   const handleClick = (x: number, y: number) => {
     if (!board) return;
@@ -64,8 +76,9 @@ export default function GameBoard() {
     if (positionData !== "") return;
 
     board.board[y][x] = turn;
+    setBoard({ ...board });
 
-    localStorage.setItem("boardData", JSON.stringify(board));
+    localStorage.setItem(data, JSON.stringify(board));
 
     setTurn(turn === "X" ? "O" : "X");
   };
@@ -73,16 +86,16 @@ export default function GameBoard() {
   return (
     <>
       {board && (
-        <article className="flex flex-col sm:flex-row flex-center sm:justify-evenly p-[0.5vw]">
-          <div className="flex sm:hidden flex-col items-center flex-center text-White font-bold text-3xl gap-5">
+        <article className="flex flex-col mid:flex-row flex-center mid:justify-evenly p-[0.5vw]">
+          <div className="flex mid:hidden flex-col items-center flex-center text-White font-bold text-3xl gap-5">
             Hraje
             <div className="flex gap-5">
               <Xicon turn={turn} width={50} height={50} />
               <Oicon turn={turn} width={58} height={58} />
             </div>
           </div>
-          <div className="hidden sm:flex flex-col flex-center text-White font-bold text-6xl gap-5">
-            Hraje
+          <div className="hidden mid:flex flex-col flex-center text-White font-bold text-6xl gap-5">
+            <span className={turn === "X" ? "" : "opacity-0"}>Hraje</span>
             <Xicon turn={turn} width={150} height={150} />
           </div>
 
@@ -110,8 +123,8 @@ export default function GameBoard() {
             </div>
           </div>
 
-          <div className="hidden sm:flex flex-col items-center flex-center text-White font-bold text-6xl gap-5">
-            Hraje
+          <div className="hidden mid:flex flex-col items-center flex-center text-White font-bold text-6xl gap-5">
+            <span className={turn === "O" ? "" : "opacity-0"}>Hraje</span>
             <Oicon turn={turn} width={158} height={158} />
           </div>
         </article>
