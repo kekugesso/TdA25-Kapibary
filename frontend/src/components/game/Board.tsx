@@ -13,7 +13,7 @@ export default function Board({
 }: BoardProps) {
   return (
     <div
-      className="flex flex-col items-center rounded-lg border-white border overflow-hidden"
+      className="flex flex-col items-center rounded-lg border-black dark:border-white border overflow-hidden"
       style={{ "--board-size": board.length } as React.CSSProperties}
     >
       {board.map((row, y) => (
@@ -22,7 +22,7 @@ export default function Board({
             <button
               key={x}
               data-position={`${y},${x}`}
-              className={`${buttonClass} border-white ${(x + y) % 2 == 0 ? "bg-black" : ""} ${x != row.length - 1 ? "border-r" : ""} ${y != board.length - 1 ? "border-b" : ""} flex flex-center`}
+              className={`${buttonClass} border-black dark:border-white ${(x + y) % 2 == 0 ? "bg-white-darker dark:bg-black" : ""} ${x != row.length - 1 ? "border-r" : ""} ${y != board.length - 1 ? "border-b" : ""} flex flex-center`}
               onClick={() => handleClick(x, y)}
             >
               {cell == "" ? (
