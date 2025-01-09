@@ -30,6 +30,9 @@ export default {
           light: "#E31838",
         },
       },
+      screens: {
+        mid: "940px",
+      },
     },
   },
   plugins: [require("tailwindcss-animated")],
