@@ -10,9 +10,9 @@ import {
   ModalFooter,
 } from "@/components/core/Modal";
 import { useRouter } from "next/navigation";
-import { DifficultyToString } from "@/types/search/difficulty";
-import { Oicon, Xicon } from "@/components/game/Icons";
+import { difficulty, DifficultyToString } from "@/types/search/difficulty";
 import { GameData } from "@/types/games/GameData";
+import TurnSwitch from "./TurnSwitch";
 
 type Error = {
   name: string;
@@ -22,7 +22,7 @@ type Error = {
 
 export default function Editor({ data }: { data: string }) {
   const router = useRouter();
-  const [board, setBoard] = useState<BoardData | null>(null);
+  const [board, setBoard] = useState<GameData | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [turn, setTurn] = useState<"X" | "O">("X");
 
@@ -41,8 +41,7 @@ export default function Editor({ data }: { data: string }) {
     localStorage.setItem("gameLocation", data);
     setTurn(savedBoardData ? calcActualTurn(JSON.parse(savedBoardData)) : "X");
 
-    if (savedBoardData)
-      setBoard(JSON.parse(savedBoardData) as BoardData | GameData);
+    if (savedBoardData) setBoard(JSON.parse(savedBoardData) as GameData);
     else
       setError({
         name: "Data error",
@@ -77,31 +76,88 @@ export default function Editor({ data }: { data: string }) {
 
     board.board[y][x] = turn;
     setBoard({ ...board });
+  };
 
-    localStorage.setItem(data, JSON.stringify(board));
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { id, value } = e.target;
+    setBoard(
+      (prev) =>
+        ({
+          ...prev,
+          [id]: value,
+        }) as GameData,
+    );
+  };
+
+  const handleSave = () => {
+    if (!board) return;
+
+    const boardData = JSON.stringify(board);
+    localStorage.setItem(data, boardData);
+    router.push("/save");
   };
 
   return (
     <>
       {board && (
-        <article className="flex flex-col md:flex-row flex-center sm:justify-evenly p-[0.5vw]">
-          <Board board={board.board} handleClick={handleClick} />
-          <div className="flex justify-center gap-2 py-2">
-            <button
-              onClick={() => router.push("/save")}
-              aria-label="Save Button"
-              className="bg-blue-light dark:bg-blue-dark text-white font-bold text-lg py-2 px-4 rounded-lg shadow-black-light shadow-sm"
-            >
-              Uložit
-            </button>
-            <button
-              onClick={() => router.push("/editor")}
-              aria-label="Edit Button"
-              className="bg-blue-light dark:bg-blue-dark text-white font-bold text-lg py-2 px-4 rounded-lg shadow-black-light shadow-sm"
-            >
-              Upravit
-            </button>
+        <article className="flex flex-col md:flex-row justify-evenly content-center items-center gap-5">
+          <div className="flex flex-col gap-y-2 w-[90%] md:w-[30%]">
+            <div>
+              <label htmlFor="name" className="block font-medium">
+                Název
+              </label>
+              <input
+                type="text"
+                id="name"
+                value={board.name}
+                onChange={handleChange}
+                placeholder="Název hry"
+                className="w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none focus:ring-1 focus:ring-blue-light"
+              />
+            </div>
+            <div>
+              <label htmlFor="difficulty" className="block font-medium">
+                Obtížnost
+              </label>
+              <select
+                id="difficulty"
+                value={board.difficulty}
+                onChange={handleChange}
+                className="w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none focus:ring-1 focus:ring-blue-light"
+              >
+                {Object.values(difficulty).map((difficulty) => (
+                  <option key={difficulty} value={difficulty}>
+                    {DifficultyToString(difficulty)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <TurnSwitch
+              turn={turn}
+              changeAction={() => setTurn((prev) => (prev === "X" ? "O" : "X"))}
+            />
+
+            <div className="flex flex-center gap-5">
+              <button
+                onClick={handleSave}
+                aria-label="Save Button"
+                className="bg-blue-light dark:bg-blue-dark text-white font-bold text-2xl py-2 px-4 rounded-lg shadow-black-light shadow-sm w-[40%]"
+              >
+                Uložit
+              </button>
+              <button
+                onClick={() => router.back()}
+                aria-label="Dont Save Button"
+                className="bg-red-light dark:bg-red-dark text-white font-bold text-2xl py-2 px-4 rounded-lg shadow-black-light shadow-sm w-[40%]"
+              >
+                Neukládat
+              </button>
+            </div>
           </div>
+          <Board board={board.board} handleClick={handleClick} />
         </article>
       )}
       {error && (
