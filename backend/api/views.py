@@ -1,6 +1,8 @@
 import uuid
-from datetime import datetime
+import requests
+from datetime import datetime, timedelta
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.http import HttpResponse, JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -10,7 +12,6 @@ from .serializers import GameSerializer, BoardSerializer
 
 class AllGamesView(APIView):
     def get(self, request):
-        print(request.data)
         games = Game.objects.all()
         serializer = GameSerializer(games, many=True)
         result = []
@@ -24,7 +25,6 @@ class AllGamesView(APIView):
 
     def post(self, request):
         data = request.data
-        print(data)
         countx = 0
         counto = 0
         board = data.pop('board')
@@ -79,7 +79,6 @@ class AllGamesView(APIView):
 
 class GameView(APIView):
     def get(self, request, uuid1):
-        print(request.data)
         game = get_object_or_404(Game, uuid=uuid1)
         serializer = GameSerializer(game)
         data = serializer.data
@@ -90,7 +89,6 @@ class GameView(APIView):
         return Response(data)
 
     def delete(self, request, uuid1):
-        print(request.data)
         game = get_object_or_404(Game, uuid=uuid1)
         game.delete()
         return Response(status=204)
@@ -99,7 +97,6 @@ class GameView(APIView):
         game = get_object_or_404(Game, uuid=uuid1)
         boards = Board.objects.all().filter(game=uuid1)
         data = request.data
-        print(data)
         countx = 0
         counto = 0
         data["uuid"] = uuid1
@@ -151,6 +148,33 @@ class GameView(APIView):
         return Response(result, status=200)
 
 
+class FilterAPIView(APIView):
+    def get(self, request):
+        data = request.data
+        result = []
+        if (data.get("updatedAt") != "24hours" and data.get("updatedAt") != "7days" and data.get("updatedAt") != "1month" and data.get("updatedAt") != "3months"):
+            return Response({"message": "Invalid updatedAt"}, status=422)
+        for dif in data.get("difficulty"):
+            if(dif != "beginner" and dif != "medium" and dif != "easy" and dif != "extreme" and dif != "hard"):
+                return Response({"message": "Invalid difficulty"}, status=422)
+            if (data.get("updatedAt") == "24hours"):
+                games = Game.objects.filter(difficulty=dif, updatedAt__gt=timezone.now() - timedelta(hours=24))
+            elif (data.get("updatedAt") == "7days"):
+                games = Game.objects.filter(difficulty=dif, updatedAt__gt=timezone.now() - timedelta(days=7))
+            elif (data.get("updatedAt") == "1month"):
+                games = Game.objects.filter(difficulty=dif, updatedAt__gt=timezone.now() - timedelta(days=30))
+            elif (data.get("updatedAt") == "3months"):
+                games = Game.objects.filter(difficulty=dif, updatedAt__gt=timezone.now() - timedelta(days=90))
+            serializer = GameSerializer(games, many=True)
+            for game in serializer.data:
+                matrix = [["" for _ in range(15)] for _ in range(15)]
+                for symbol in game.get("board"):
+                    matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
+                game["board"] = matrix
+                result.append(game)
+        return Response(result)
+
+
 def FrontForFun(request):
     return HttpResponse("Front for fun", content_type="text/html")
 
@@ -162,29 +186,24 @@ def can_win_next_move(board, symbol):
     size = 15
     for row in range(size):
         for col in range(size):
-            # Пропустить занятые ячейки
             if board[row][col] == "":
                 continue
 
-            # Проверить горизонталь
             if col <= size - 5:
                 line = [board[row][col + i] for i in range(5)]
                 if all(cell in {symbol, ""} for cell in line) and line.count(symbol) == 4:
                     return True
 
-            # Проверить вертикаль
             if row <= size - 5:
                 line = [board[row + i][col] for i in range(5)]
                 if all(cell in {symbol, ""} for cell in line) and line.count(symbol) == 4:
                     return True
 
-            # Проверить диагональ слева направо
             if row <= size - 5 and col <= size - 5:
                 line = [board[row + i][col + i] for i in range(5)]
                 if all(cell in {symbol, ""} for cell in line) and line.count(symbol) == 4:
                     return True
 
-            # Проверить диагональ справа налево
             if row <= size - 5 and col >= 4:
                 line = [board[row + i][col - i] for i in range(5)]
                 if all(cell in {symbol, ""} for cell in line) and line.count(symbol) == 4:
