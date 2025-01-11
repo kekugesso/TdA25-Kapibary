@@ -22,7 +22,7 @@ export default function AboutSite() {
         height={500}
         width={500}
         loading="eager"
-        className="flex flex-center text-gray-500 bg-white-darker min-h-[300px] min-w-[300px] mid:min-h-[500px] mid:min-w-[500px]"
+        className="flex flex-center min-h-[300px] min-w-[300px] mid:min-h-[500px] mid:min-w-[500px]"
       />
     </article>
   );
