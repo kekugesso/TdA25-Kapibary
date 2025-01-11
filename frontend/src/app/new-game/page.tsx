@@ -41,7 +41,7 @@ export default function NewGame() {
       {continueGame && (
         <Modal open onClose={CreateNewGame}>
           <ModalHeader>
-            <h1 className="text-2xl font-semibold">Pokračovat ve hře</h1>
+            <p className="text-2xl font-semibold">Pokračovat ve hře</p>
           </ModalHeader>
           <ModalBody>
             <p>
