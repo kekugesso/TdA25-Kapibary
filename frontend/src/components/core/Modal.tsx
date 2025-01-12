@@ -18,7 +18,7 @@ export function Modal({ children, open, onClose }: ModalProps) {
   return (
     <dialog
       ref={dialogRef}
-      className="fixed inset-0 flex items-center justify-center bg-transparent"
+      className="bg-transparent"
       open={open}
       onClick={handleBackdropClick}
     >
