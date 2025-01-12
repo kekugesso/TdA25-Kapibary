@@ -77,8 +77,8 @@ export default function Navbar() {
           src="/img/logo_white_full.svg"
           alt="Think diffrent academy"
           height={50}
-          width={250}
-          className="flex items-center max-h-[50px]"
+          width={200}
+          className="flex items-center max-h-[calc(var(--navbar-height)-10px)]"
         />
       </Link>
       <nav className="hidden sm:flex flex-row space-x-3 md:space-x-5 items-center w-fit">
