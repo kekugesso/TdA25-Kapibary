@@ -14,9 +14,9 @@ export default function Card({ game }: { game: GameData }) {
 
   return (
     <div key={game.uuid} aria-label="Game Card" className="flex flex-center">
-      <div className="w-72 flex flex-col bg-black rounded-lg items-center justify-between overflow-hidden">
+      <div className="w-72 flex flex-col shadow-lg bg-white dark:bg-black rounded-lg items-center justify-between overflow-hidden">
         <div className="flex justify-between w-full h-fit bg-blue-light dark:bg-blue-dark">
-          <p className="p-3 text-2xl font-bold">{game.name}</p>
+          <p className="p-3 text-2xl font-bold text-white">{game.name}</p>
           <Image
             src={`/img/level_${game.difficulty}.svg`}
             alt={game.name}
@@ -26,15 +26,15 @@ export default function Card({ game }: { game: GameData }) {
           />
         </div>
 
-        <p className="p-2 text-xl font-semibold self-start">
+        <p className="px-3 py-2 text-xl font-semibold self-start">
           {DifficultyToString(game.difficulty)}
         </p>
-        <p className="p-2 text-xl font-semibold self-start">
+        <p className="px-3 py-2 text-xl font-semibold self-start">
           {UpdatedAtToString(UpdatedAtFromStringDate(game.updatedAt))}
         </p>
         <button
           onClick={() => router.push(`/game/${game.uuid}`)}
-          className="w-[90%] m-2 text-xl bg-blue-light dark:bg-blue-dark text-white dark:text-black font-semibold rounded-lg py-2 px-6"
+          className="w-[90%] m-2 text-xl bg-blue-light dark:bg-blue-dark text-white font-semibold rounded-lg py-2 px-6"
         >
           Hrat
         </button>

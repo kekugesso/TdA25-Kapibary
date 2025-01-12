@@ -127,8 +127,8 @@ export default function SearchBar({
 
       <input
         type="text"
-        placeholder="Hledat"
-        className="flex-grow bg-transparent focus:outline-none text-gray-700"
+        placeholder="Hledat..."
+        className="flex-grow bg-transparent focus:outline-none dark:text-white text-black"
         onChange={(e) => setSearch(e.target.value)}
         onKeyDown={(e) =>
           e.key === "Enter" && searchAction(search, filterParams)
