@@ -6,6 +6,7 @@ import GameBoard from "@/components/game/GameBoard";
 import { useEffect, useState } from "react";
 import Loading from "@/components/core/Loading";
 import { CreateMatrix } from "@/components/game/MatrixFunctions";
+import { GameData } from "@/types/games/GameData";
 
 export default function Game() {
   const [boardData, setBoardData] = useState<BoardData | null>();
@@ -27,5 +28,5 @@ export default function Game() {
     }
   }, []);
 
-  return boardData ? <GameBoard data="boardData" /> : <Loading />;
+  return boardData ? <GameBoard data={boardData as GameData} /> : <Loading />;
 }

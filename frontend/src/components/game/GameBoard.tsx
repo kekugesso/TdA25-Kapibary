@@ -1,8 +1,7 @@
 "use client";
 
-import { BoardData } from "@/types/board/BoardData";
 import Board from "@/components/game/Board";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Modal,
   ModalHeader,
@@ -13,6 +12,9 @@ import { useRouter } from "next/navigation";
 import { DifficultyToString } from "@/types/search/difficulty";
 import { Oicon, Xicon } from "@/components/game/Icons";
 import { GameData } from "@/types/games/GameData";
+import { BoardType } from "@/types/board/BoardType";
+import { useMutation } from "@tanstack/react-query";
+import Image from "next/image";
 
 type Error = {
   name: string;
@@ -20,41 +22,62 @@ type Error = {
   level: "normal" | "fatal";
 };
 
-export default function GameBoard({ data }: { data: string }) {
+export default function GameBoard({ data }: { data: GameData }) {
   const router = useRouter();
-  const [board, setBoard] = useState<BoardData | null>(null);
+  const [game, setGame] = useState<GameData | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [turn, setTurn] = useState<"X" | "O">("X");
 
-  const calcActualTurn = (board: BoardData) => {
-    const xCount = board.board.flat().filter((x) => x === "X").length;
-    const oCount = board.board.flat().filter((o) => o === "O").length;
+  const deleteHandler = () => {
+    if (!game) return;
+
+    if (confirm("Opravdu chcete smazat tuto hru?")) {
+      if (game.uuid) deleteGame();
+      localStorage.clear();
+      router.push("/games");
+    }
+  };
+
+  const { mutate: deleteGame } = useMutation({
+    mutationFn: () => fetch(`/api/games/${game?.uuid}`, { method: "DELETE" }),
+    onError: (error) => {
+      setError({
+        name: "Delete error",
+        message: error.message,
+        level: "fatal",
+      });
+    },
+  });
+
+  const calcActualTurn = (board: BoardType) => {
+    const xCount = board.flat().filter((x) => x === "X").length;
+    const oCount = board.flat().filter((o) => o === "O").length;
 
     return xCount > oCount ? "O" : "X";
   };
 
-  document.body.classList.add("disable-footer");
+  useEffect(() => {
+    document.body.classList.add("disable-footer");
+    return () => document.body.classList.remove("disable-footer");
+  }, []);
 
+  const dataUpdate = useRef(false);
   useEffect(() => {
     if (!data) return;
-    const savedBoardData = localStorage.getItem(data);
-    localStorage.setItem("gameLocation", data);
-    setTurn(savedBoardData ? calcActualTurn(JSON.parse(savedBoardData)) : "X");
+    if (dataUpdate.current) return;
+    dataUpdate.current = true;
 
-    if (savedBoardData)
-      setBoard(JSON.parse(savedBoardData) as BoardData | GameData);
-    else
-      setError({
-        name: "Data error",
-        message: "Couldn't get data from local storage",
-        level: "fatal",
-      });
-  }, [data]);
+    setGame(data);
+    localStorage.setItem("gameLocation", data.uuid || "boardData");
+    setTurn(calcActualTurn(data.board));
+
+    dataUpdate.current = false;
+  }, [data, game]);
 
   const handleClick = (x: number, y: number) => {
-    if (!board) return;
+    if (!game) return;
 
-    const dataRow = board.board.at(y);
+    const dataRow = game.board.at(y);
     if (dataRow === undefined) {
       setError({
         name: "Index error",
@@ -75,17 +98,17 @@ export default function GameBoard({ data }: { data: string }) {
 
     if (positionData !== "") return;
 
-    board.board[y][x] = turn;
-    setBoard({ ...board });
+    game.board[y][x] = turn;
+    setGame({ ...game });
 
-    localStorage.setItem(data, JSON.stringify(board));
+    localStorage.setItem(game.uuid || "boardData", JSON.stringify(game));
 
     setTurn(turn === "X" ? "O" : "X");
   };
 
   return (
     <>
-      {board && (
+      {game && (
         <article className="flex flex-col mid:flex-row flex-center mid:justify-evenly p-[0.5vw]">
           <div className="flex mid:hidden flex-col items-center flex-center text-White font-bold text-3xl gap-5">
             Hraje
@@ -101,10 +124,10 @@ export default function GameBoard({ data }: { data: string }) {
 
           <div className="flex flex-col items-center flex-center">
             <div className="flex justify-between text-2xl font-semibold dark:text-white text-black w-full">
-              <p>{board.name}</p>
-              <p>{DifficultyToString(board.difficulty)}</p>
+              <p>{game.name}</p>
+              <p>{DifficultyToString(game.difficulty)}</p>
             </div>
-            <Board board={board.board} handleClick={handleClick} />
+            <Board board={game.board} handleClick={handleClick} />
             <div className="flex justify-center gap-2 py-2">
               <button
                 onClick={() => router.push("/save")}
@@ -119,6 +142,20 @@ export default function GameBoard({ data }: { data: string }) {
                 className="bg-blue-light dark:bg-blue-dark text-white font-bold text-lg py-2 px-4 rounded-lg shadow-black-light shadow-sm"
               >
                 Upravit
+              </button>
+              <button
+                onClick={deleteHandler}
+                aria-label="Delete Button"
+                className="bg-red-light dark:bg-red-dark text-white font-bold text-lg py-2 px-4 rounded-lg shadow-black-light shadow-sm flex flex-row gap-2 items-center"
+              >
+                <Image
+                  src="/img/bin_delete.svg"
+                  width={20}
+                  height={20}
+                  alt="bin"
+                  className="dark:invert"
+                />
+                Delete
               </button>
             </div>
           </div>
