@@ -15,6 +15,7 @@ import { GameData } from "@/types/games/GameData";
 import { BoardType } from "@/types/board/BoardType";
 import { useMutation } from "@tanstack/react-query";
 import Image from "next/image";
+import GetWinningBoard from "./GetWinningBoard";
 
 type Error = {
   name: string;
@@ -27,6 +28,18 @@ export default function GameBoard({ data }: { data: GameData }) {
   const [game, setGame] = useState<GameData | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [turn, setTurn] = useState<"X" | "O">("X");
+  const [winner, setWinner] = useState<"X" | "O" | null>(null);
+  const [tie, setTie] = useState(false);
+  const [gameEnd, setGameEnd] = useState(false);
+
+  useEffect(() => {
+    if (window) {
+      window.ContinueGame = () => setGameEnd(false);
+      window.EndGame = () => setGameEnd(true);
+      window.SetWinner = (winner: "X" | "O") => setWinner(winner);
+      window.SetTie = () => setTie(true);
+    }
+  }, []);
 
   const deleteHandler = () => {
     if (!game) return;
@@ -76,6 +89,7 @@ export default function GameBoard({ data }: { data: GameData }) {
 
   const handleClick = (x: number, y: number) => {
     if (!game) return;
+    if (gameEnd) return;
 
     const dataRow = game.board.at(y);
     if (dataRow === undefined) {
@@ -98,10 +112,29 @@ export default function GameBoard({ data }: { data: GameData }) {
 
     if (positionData !== "") return;
 
+    // new board with position
     game.board[y][x] = turn;
     setGame({ ...game });
 
-    localStorage.setItem(game.uuid || "boardData", JSON.stringify(game));
+    // Check if the game is over
+    const isFull = game.board.flat().every((cell) => cell !== "");
+    if (isFull) {
+      setTie(true);
+      setGameEnd(true);
+    }
+
+    const winningBoard = GetWinningBoard(game.board, 5);
+    if (winningBoard) {
+      setGame({ ...game, board: winningBoard });
+      setWinner(turn);
+      setGameEnd(true);
+    }
+
+    // Save the game data
+    localStorage.setItem(
+      game.uuid || "boardData",
+      JSON.stringify(winningBoard ? winningBoard : game),
+    );
 
     setTurn(turn === "X" ? "O" : "X");
   };
@@ -188,6 +221,42 @@ export default function GameBoard({ data }: { data: GameData }) {
                   ? () => router.push("/")
                   : () => setError(null)
               }
+              className="bg-blue-light dark:bg-blue-dark text-white dark:text-black font-semibold rounded-lg py-2 px-6"
+            >
+              ok
+            </button>
+          </ModalFooter>
+        </Modal>
+      )}
+      {winner && (
+        <Modal open={true} onClose={() => setWinner(null)}>
+          <ModalHeader>Výhra</ModalHeader>
+          <ModalBody>
+            <p className="text-center text-balance font-medium">
+              Vyhrál hráč {winner}
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <button
+              onClick={() => setWinner(null)}
+              className="bg-blue-light dark:bg-blue-dark text-white dark:text-black font-semibold rounded-lg py-2 px-6"
+            >
+              ok
+            </button>
+          </ModalFooter>
+        </Modal>
+      )}
+      {tie && (
+        <Modal open={true} onClose={() => setTie(false)}>
+          <ModalHeader>Remíza</ModalHeader>
+          <ModalBody>
+            <p className="text-center text-balance font-medium">
+              Hra skončila remízou
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <button
+              onClick={() => setTie(false)}
               className="bg-blue-light dark:bg-blue-dark text-white dark:text-black font-semibold rounded-lg py-2 px-6"
             >
               ok
