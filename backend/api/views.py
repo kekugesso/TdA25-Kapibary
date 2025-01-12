@@ -149,7 +149,7 @@ class GameView(APIView):
 
 
 class FilterAPIView(APIView):
-    def get(self, request):
+    def post(self, request):
         data = request.data
         result = []
         if (data.get("updatedAt") != "24hours" and data.get("updatedAt") != "7days" and data.get("updatedAt") != "1month" and data.get("updatedAt") != "3months"):
