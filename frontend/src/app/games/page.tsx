@@ -91,35 +91,35 @@ export default function Games() {
 
   return (
     <>
-      {isPending && games ? (
-        <Loading />
-      ) : (
-        <article className="flex flex-col gap-4">
-          <div className="flex justify-center m-5">
-            <div className="w-[80vw]">
-              <SearchBar
-                searchAction={handleSearch}
-                filterParams={filterParams}
-                filterSetAction={setFilterParams}
-                filterBlockAction={setIsBlocked}
-                applyFilterAction={getGames}
-              />
-            </div>
+      <article className="flex flex-col gap-4">
+        <div className="flex justify-center m-5">
+          <div className="w-[80vw]">
+            <SearchBar
+              searchAction={handleSearch}
+              filterParams={filterParams}
+              filterSetAction={setFilterParams}
+              filterBlockAction={setIsBlocked}
+              applyFilterAction={getGames}
+            />
           </div>
+        </div>
+        {isPending && games ? (
+          <Loading />
+        ) : (
           <div
             className="flex flex-wrap justify-center gap-10 mb-10"
             aria-label="Games"
           >
-            {games ? (
+            {games.length > 0 ? (
               games.map((game) => <Card key={game.uuid} game={game} />)
             ) : (
               <p className="self-center text-center text-balance font-medium">
-                No games found.
+                No games found...
               </p>
             )}
           </div>
-        </article>
-      )}
+        )}
+      </article>
       {error && (
         <Modal open={true} onClose={handleClose}>
           <ModalHeader>Error: {error.name}</ModalHeader>
