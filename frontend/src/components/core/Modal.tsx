@@ -18,7 +18,7 @@ export function Modal({ children, open, onClose }: ModalProps) {
   return (
     <dialog
       ref={dialogRef}
-      className="bg-transparent"
+      className="fixed inset-0 bg-transparent"
       open={open}
       onClick={handleBackdropClick}
     >
