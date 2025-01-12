@@ -18,18 +18,16 @@ export default function SaveGame() {
   const [error, setError] = useState<Error | null>(null);
   const [gameLocation, setGameLocation] = useState<string | null>(null);
 
-  const mutateFn = (location: string = "") =>
-    fetch(`/api/games/${location}`, {
+  const mutateFn = async (location: string = "") => {
+    const res = await fetch(`/api/games/${location}`, {
       method: location === "" ? "POST" : "PUT",
       headers: { "Content-Type": "application/json" },
       body: localStorage.getItem(location === "" ? "boardData" : location),
-    })
-      .then((res) => {
-        if (res.status >= 300) {
-          throw res.text().then(JSON.parse);
-        } else return res.json();
-      })
-      .then((data) => data as GameData);
+    });
+
+    if (res.status >= 300) throw await res.json();
+    else return (await res.json()) as GameData;
+  };
 
   const dataUpdate = (data: GameData) => {
     localStorage.setItem(data.uuid, JSON.stringify(data));
@@ -71,7 +69,7 @@ export default function SaveGame() {
 
   return (
     <>
-      {isLoadingSave || isLoadingUpdate ? (
+      {isLoadingSave || isLoadingUpdate || error !== null ? (
         <Loading />
       ) : (
         <article>
