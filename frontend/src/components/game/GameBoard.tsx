@@ -1,7 +1,7 @@
 "use client";
 
 import Board from "@/components/game/Board";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Modal,
   ModalHeader,
@@ -69,6 +69,28 @@ export default function GameBoard({ data }: { data: GameData }) {
     return xCount > oCount ? "O" : "X";
   };
 
+  const WinCheck = useCallback((board: BoardType): boolean => {
+    // Check if the game is over
+    const isFull = board.flat().every((cell) => cell !== "");
+    if (isFull) {
+      setTie(true);
+      setGameEnd(true);
+      return true;
+    }
+
+    for (const turn of ["X", "O"]) {
+      const winningBoard = GetWinningBoard(board, 5, turn as "X" | "O");
+      if (winningBoard) {
+        setGame((prev) => ({ ...prev, board: winningBoard }) as GameData);
+        setWinner(turn as "X" | "O");
+        setGameEnd(true);
+        return true;
+      }
+    }
+
+    return false;
+  }, []);
+
   useEffect(() => {
     document.body.classList.add("disable-footer");
     return () => document.body.classList.remove("disable-footer");
@@ -82,10 +104,12 @@ export default function GameBoard({ data }: { data: GameData }) {
 
     setGame(data);
     localStorage.setItem("gameLocation", data.uuid || "boardData");
+    if (WinCheck(data.board)) return;
+
     setTurn(calcActualTurn(data.board));
 
     dataUpdate.current = false;
-  }, [data, game]);
+  }, [data, game, WinCheck]);
 
   const handleClick = (x: number, y: number) => {
     if (!game) return;
@@ -116,25 +140,8 @@ export default function GameBoard({ data }: { data: GameData }) {
     game.board[y][x] = turn;
     setGame({ ...game });
 
-    // Check if the game is over
-    const isFull = game.board.flat().every((cell) => cell !== "");
-    if (isFull) {
-      setTie(true);
-      setGameEnd(true);
-    }
-
-    const winningBoard = GetWinningBoard(game.board, 5);
-    if (winningBoard) {
-      setGame({ ...game, board: winningBoard });
-      setWinner(turn);
-      setGameEnd(true);
-    }
-
     // Save the game data
-    localStorage.setItem(
-      game.uuid || "boardData",
-      JSON.stringify(winningBoard ? winningBoard : game),
-    );
+    localStorage.setItem(game.uuid || "boardData", JSON.stringify(game));
 
     setTurn(turn === "X" ? "O" : "X");
   };

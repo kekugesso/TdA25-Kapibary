@@ -1,86 +1,90 @@
 import { BoardType } from "@/types/board/BoardType";
-import { GameData } from "@/types/games/GameData";
+// BoardType is string[][]
 
 export default function GetWinningBoard(
   board: BoardType,
   winning: number,
+  turn: "X" | "O",
 ): BoardType | null {
   // check if the board has 'winning' number of 'X' or 'O' in a row
   // if it does it adds 'w' at the end of the position and returns the board
   // else return null
 
-  const checkHorizontal = (board: BoardType, turn: string) => {
-    for (let i = 0; i < board.length; i++) {
-      let count = 0;
-      for (let j = 0; j < board.length; j++) {
-        if (board[i][j] === turn) count++;
-        else count = 0;
-
-        if (count === winning) {
-          for (let k = 0; k < winning; k++) {
-            board[i][j - k] += "w";
-          }
-          return board;
-        }
-      }
+  const HorizontalWin = (shiftRow: number, shiftCol: number) => {
+    for (let k = 0; k < winning; k++) {
+      board[shiftRow][shiftCol - k] += "w";
     }
-    return null;
+    return board;
   };
 
-  const checkVertical = (board: BoardType, turn: string) => {
-    for (let i = 0; i < board.length; i++) {
-      let count = 0;
-      for (let j = 0; j < board.length; j++) {
-        if (board[j][i] === turn) count++;
-        else count = 0;
-
-        if (count === winning) {
-          for (let k = 0; k < winning; k++) {
-            board[j - k][i] += "w";
-          }
-          return board;
-        }
-      }
+  const VerticalWin = (shiftRow: number, shiftCol: number) => {
+    for (let k = 0; k < winning; k++) {
+      board[shiftRow - k][shiftCol] += "w";
     }
-    return null;
+    return board;
   };
 
-  // const checkDiagonal = (board: BoardType, turn: string) => {
-  //   for (let i = 0; i < board.length; i++) {
-  //     let count = 0;
-  //     for (let j = 0; j < board.length; j++) {
-  //
-  //     }
-  //   }
-  //   return null;
-  // };
-  //
-  // const checkAntiDiagonal = (board: BoardType, turn: string) => {
-  //   for (let i = 0; i < board.length; i++) {
-  //     let count = 0;
-  //     for (let j = 0; j < board.length; j++) {
-  //       if (board[j][board.length - 1 - j] === turn) count++;
-  //       else count = 0;
-  //
-  //       if (count === winning) {
-  //         for (let k = 0; k < winning; k++) {
-  //           board[j - k][board.length - 1 - j + k] += "w";
-  //         }
-  //         return board;
-  //       }
-  //     }
-  //   }
-  //   return null;
-  // };
+  const DiagonalWin = (shiftRow: number, shiftCol: number) => {
+    for (let k = 0; k < winning; k++) {
+      board[shiftRow - k][shiftCol - k] += "w";
+    }
+    return board;
+  };
 
-  if (board) {
-    const horizontal =
-      checkHorizontal(board, "X") || checkHorizontal(board, "O");
-    const vertical = checkVertical(board, "X") || checkVertical(board, "O");
-    // const diagonal = checkDiagonal(board, "X") || checkDiagonal(board, "O");
-    // const antiDiagonal =
-    //   checkAntiDiagonal(board, "X") || checkAntiDiagonal(board, "O");
+  const AntiDiagonalWin = (shiftRow: number, shiftCol: number) => {
+    for (let k = 0; k < winning; k++) {
+      board[shiftRow - k][shiftCol + k] += "w";
+    }
+    return board;
+  };
 
-    return horizontal || vertical; //|| diagonal || antiDiagonal;
+  for (let row = 0; row < board.length; row++) {
+    for (let col = 0; col < board[row].length; col++) {
+      let countHorizontal = 0;
+      let countVertical = 0;
+      let countDiagonal = 0;
+      let countAntiDiagonal = 0;
+
+      // Horizontal Check
+      for (let k = 0; k < winning && col + k < board[row].length; k++) {
+        if (board[row][col + k] === turn) countHorizontal++;
+        else break;
+      }
+      if (countHorizontal === winning)
+        return HorizontalWin(row, col + winning - 1);
+
+      // Vertical Check
+      for (let k = 0; k < winning && row + k < board.length; k++) {
+        if (board[row + k][col] === turn) countVertical++;
+        else break;
+      }
+      if (countVertical === winning) return VerticalWin(row + winning - 1, col);
+
+      // Diagonal Check
+      for (
+        let k = 0;
+        k < winning && row + k < board.length && col + k < board[row].length;
+        k++
+      ) {
+        if (board[row + k][col + k] === turn) countDiagonal++;
+        else break;
+      }
+      if (countDiagonal === winning)
+        return DiagonalWin(row + winning - 1, col + winning - 1);
+
+      // Anti-Diagonal Check
+      for (
+        let k = 0;
+        k < winning && row + k < board.length && col - k >= 0;
+        k++
+      ) {
+        if (board[row + k][col - k] === turn) countAntiDiagonal++;
+        else break;
+      }
+      if (countAntiDiagonal === winning)
+        return AntiDiagonalWin(row + winning - 1, col - winning + 1);
+    }
   }
+
+  return null;
 }
