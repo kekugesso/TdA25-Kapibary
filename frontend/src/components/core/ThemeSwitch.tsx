@@ -12,6 +12,19 @@ export default function ThemeSwitch() {
   const [isDelay, setIsDelay] = useState(false);
 
   useEffect(() => {
+    if (!mounted) return;
+    const theme = localStorage.getItem("theme");
+    if (theme && theme !== "system") return;
+
+    if (
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+    )
+      setTheme("dark");
+    else setTheme("light");
+  }, [theme]);
+
+  useEffect(() => {
     setMounted(true);
     setIsDark(theme === "dark");
   }, [theme]);
