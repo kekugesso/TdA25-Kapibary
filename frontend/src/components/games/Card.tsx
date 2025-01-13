@@ -32,12 +32,20 @@ export default function Card({ game }: { game: GameData }) {
         <p className="px-3 py-2 text-xl font-semibold self-start">
           {UpdatedAtToString(UpdatedAtFromStringDate(game.updatedAt))}
         </p>
-        <button
-          onClick={() => router.push(`/game/${game.uuid}`)}
-          className="w-[90%] m-2 text-xl bg-blue-light dark:bg-blue-dark text-white font-semibold rounded-lg py-2 px-6"
-        >
-          Hrat
-        </button>
+        <div className="w-full flex flex-row justify-between">
+          <button
+            onClick={() => router.push(`/game/${game.uuid}?edit=true`)}
+            className="w-full m-2 mr-1 text-xl bg-blue-light dark:bg-blue-dark text-white font-semibold rounded-lg py-2 px-6"
+          >
+            Editovat
+          </button>
+          <button
+            onClick={() => router.push(`/game/${game.uuid}`)}
+            className="w-full m-2 ml-1 text-xl bg-blue-light dark:bg-blue-dark text-white font-semibold rounded-lg py-2 px-6"
+          >
+            Hrát
+          </button>
+        </div>
       </div>
     </div>
   );
