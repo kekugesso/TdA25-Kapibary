@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "@/components/core/Providers";
 import PageLayout from "@/components/core/PageLayout";
+import LocalStorageManager from "@/components/core/LocalStorageManager";
 
 export const metadata: Metadata = {
   title: "Think different accademy",
@@ -23,6 +24,7 @@ export default function RootLayout({
         <Providers>
           <PageLayout>{children}</PageLayout>
         </Providers>
+        <LocalStorageManager />
       </body>
     </html>
   );

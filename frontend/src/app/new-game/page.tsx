@@ -24,7 +24,6 @@ export default function NewGame() {
       board: CreateMatrix(15, 15),
     };
 
-    localStorage.clear();
     localStorage.setItem("boardData", JSON.stringify(initialBoardData));
 
     router.push("/game");
