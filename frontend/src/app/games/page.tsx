@@ -16,6 +16,7 @@ import SearchBar from "@/components/games/SearchBar";
 import { SearchQueryType } from "@/types/search/SearchQuery";
 import { updatedAt } from "@/types/search/updatedAt";
 import { difficulty } from "@/types/search/difficulty";
+import NewGameButton from "@/components/games/NewGameButton";
 
 export default function Games() {
   const router = useRouter();
@@ -117,6 +118,12 @@ export default function Games() {
                 No games found...
               </p>
             )}
+            <div
+              className="fixed bottom-[5dvh] right-[5vw] z-50"
+              aria-label="New Game button"
+            >
+              <NewGameButton />
+            </div>
           </div>
         )}
       </article>

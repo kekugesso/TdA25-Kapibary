@@ -33,6 +33,9 @@ export default {
       screens: {
         mid: "940px",
       },
+      transitionProperty: {
+        width: "width",
+      },
     },
   },
   plugins: [require("tailwindcss-animated")],
