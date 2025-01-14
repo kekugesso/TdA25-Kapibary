@@ -34,7 +34,7 @@ export default function Card({ game }: { game: GameData }) {
         </p>
         <div className="w-full flex flex-row justify-between">
           <button
-            onClick={() => router.push(`/game/${game.uuid}?edit=true`)}
+            onClick={() => router.push(`/game/${game.uuid}/edit`)}
             className="w-full m-2 mr-1 text-xl bg-blue-light dark:bg-blue-dark text-white font-semibold rounded-lg py-2 px-6"
           >
             Editovat
