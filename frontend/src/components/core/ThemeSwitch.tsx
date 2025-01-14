@@ -22,7 +22,7 @@ export default function ThemeSwitch() {
     )
       setTheme("dark");
     else setTheme("light");
-  }, [theme]);
+  }, [theme, mounted]);
 
   useEffect(() => {
     setMounted(true);
