@@ -31,13 +31,16 @@ export default function GameBoard({ data }: { data: GameData }) {
   const [winner, setWinner] = useState<"X" | "O" | null>(null);
   const [tie, setTie] = useState(false);
   const [gameEnd, setGameEnd] = useState(false);
+  const [neededToWin, setNeededToWin] = useState(5)
 
   useEffect(() => {
+    // register some console functions
     if (window) {
       window.ContinueGame = () => setGameEnd(false);
       window.EndGame = () => setGameEnd(true);
       window.SetWinner = (winner: "X" | "O") => setWinner(winner);
       window.SetTie = () => setTie(true);
+      window.SetNeededToWin = (count: number) => setNeededToWin(count)
     }
   }, []);
 
@@ -79,7 +82,7 @@ export default function GameBoard({ data }: { data: GameData }) {
     }
 
     for (const turn of ["X", "O"]) {
-      const winningBoard = GetWinningBoard(board, 5, turn as "X" | "O");
+      const winningBoard = GetWinningBoard(board, neededToWin, turn as "X" | "O");
       if (winningBoard) {
         setGame((prev) => ({ ...prev, board: winningBoard }) as GameData);
         setWinner(turn as "X" | "O");
@@ -89,7 +92,7 @@ export default function GameBoard({ data }: { data: GameData }) {
     }
 
     return false;
-  }, []);
+  }, [neededToWin]);
 
   useEffect(() => {
     document.body.classList.add("disable-footer");
