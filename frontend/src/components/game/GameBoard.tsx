@@ -31,7 +31,7 @@ export default function GameBoard({ data }: { data: GameData }) {
   const [winner, setWinner] = useState<"X" | "O" | null>(null);
   const [tie, setTie] = useState(false);
   const [gameEnd, setGameEnd] = useState(false);
-  const [neededToWin, setNeededToWin] = useState(5)
+  const [neededToWin, setNeededToWin] = useState(5);
 
   useEffect(() => {
     // register some console functions
@@ -40,7 +40,7 @@ export default function GameBoard({ data }: { data: GameData }) {
       window.EndGame = () => setGameEnd(true);
       window.SetWinner = (winner: "X" | "O") => setWinner(winner);
       window.SetTie = () => setTie(true);
-      window.SetNeededToWin = (count: number) => setNeededToWin(count)
+      window.SetNeededToWin = (count: number) => setNeededToWin(count);
     }
   }, []);
 
@@ -72,27 +72,34 @@ export default function GameBoard({ data }: { data: GameData }) {
     return xCount > oCount ? "O" : "X";
   };
 
-  const WinCheck = useCallback((board: BoardType): boolean => {
-    // Check if the game is over
-    const isFull = board.flat().every((cell) => cell !== "");
-    if (isFull) {
-      setTie(true);
-      setGameEnd(true);
-      return true;
-    }
-
-    for (const turn of ["X", "O"]) {
-      const winningBoard = GetWinningBoard(board, neededToWin, turn as "X" | "O");
-      if (winningBoard) {
-        setGame((prev) => ({ ...prev, board: winningBoard }) as GameData);
-        setWinner(turn as "X" | "O");
+  const WinCheck = useCallback(
+    (board: BoardType): boolean => {
+      // Check if the game is over
+      const isFull = board.flat().every((cell) => cell !== "");
+      if (isFull) {
+        setTie(true);
         setGameEnd(true);
         return true;
       }
-    }
 
-    return false;
-  }, [neededToWin]);
+      for (const turn of ["X", "O"]) {
+        const winningBoard = GetWinningBoard(
+          board,
+          neededToWin,
+          turn as "X" | "O",
+        );
+        if (winningBoard) {
+          setGame((prev) => ({ ...prev, board: winningBoard }) as GameData);
+          setWinner(turn as "X" | "O");
+          setGameEnd(true);
+          return true;
+        }
+      }
+
+      return false;
+    },
+    [neededToWin],
+  );
 
   useEffect(() => {
     document.body.classList.add("disable-footer");
@@ -196,7 +203,7 @@ export default function GameBoard({ data }: { data: GameData }) {
                   width={20}
                   height={20}
                   alt="bin"
-                  className="dark:invert"
+                  className="invert"
                 />
                 Delete
               </button>
