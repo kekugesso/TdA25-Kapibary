@@ -247,18 +247,23 @@ export default function GameBoard({ data }: { data: GameData }) {
       )}
       {winner && (
         <Modal open={true} onClose={() => setWinner(null)}>
-          <ModalHeader>Výhra</ModalHeader>
+          <ModalHeader>{""}</ModalHeader>
           <ModalBody>
-            <p className="text-center text-balance font-medium">
-              Vyhrál hráč {winner}
-            </p>
+            <div className="flex flex-row items-center justify-around text-center text-balance font-extrabold text-6xl">
+              Vyhrály
+              {winner === "X" ? (
+                <Xicon turn={"X"} width={75} height={75} />
+              ) : (
+                <Oicon turn={"O"} width={75} height={75} />
+              )}
+            </div>
           </ModalBody>
           <ModalFooter>
             <button
               onClick={() => setWinner(null)}
-              className="bg-blue-light dark:bg-blue-dark text-white dark:text-black font-semibold rounded-lg py-2 px-6"
+              className="bg-blue-light dark:bg-blue-dark text-white text-xl dark:text-black font-bold rounded-lg py-2 px-6"
             >
-              ok
+              OK
             </button>
           </ModalFooter>
         </Modal>
