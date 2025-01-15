@@ -33,6 +33,14 @@ export default function SearchBar({
   // checkboxes for difficulty
   const handleDifficultyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value as keyof typeof difficulty;
+    if (!filterParams.difficulty) {
+      filterSetAction((prev) => ({
+        ...prev,
+        difficulty: [value],
+      }));
+      return;
+    }
+
     const newDifficulties = filterParams.difficulty.includes(value)
       ? filterParams.difficulty.filter((d) => d !== value)
       : [...filterParams.difficulty, value];

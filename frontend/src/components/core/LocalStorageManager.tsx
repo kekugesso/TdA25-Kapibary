@@ -25,7 +25,7 @@ export default function LocalStorageManager() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.clearLocalStorage = ClearLocalStorage;
+    // window.clearLocalStorage = ClearLocalStorage;
     if (localStorage.length > 25) ClearLocalStorage();
   }, []);
   return <></>;

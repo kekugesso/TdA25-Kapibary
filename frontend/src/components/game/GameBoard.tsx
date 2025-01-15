@@ -33,16 +33,16 @@ export default function GameBoard({ data }: { data: GameData }) {
   const [gameEnd, setGameEnd] = useState(false);
   const [neededToWin, setNeededToWin] = useState(5);
 
-  useEffect(() => {
-    // register some console functions
-    if (window) {
-      window.ContinueGame = () => setGameEnd(false);
-      window.EndGame = () => setGameEnd(true);
-      window.SetWinner = (winner: "X" | "O") => setWinner(winner);
-      window.SetTie = () => setTie(true);
-      window.SetNeededToWin = (count: number) => setNeededToWin(count);
-    }
-  }, []);
+  // useEffect(() => {
+  //   // register some console functions
+  //   if (window) {
+  //     window.ContinueGame = () => setGameEnd(false);
+  //     window.EndGame = () => setGameEnd(true);
+  //     window.SetWinner = (winner: "X" | "O") => setWinner(winner);
+  //     window.SetTie = () => setTie(true);
+  //     window.SetNeededToWin = (count: number) => setNeededToWin(count);
+  //   }
+  // }, []);
 
   const deleteHandler = () => {
     if (!game) return;
