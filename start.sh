@@ -32,7 +32,7 @@ elif [ "$1" = "setup-dev" ]; then
   python3 backend/manage.py migrate
 
   cd frontend
-  npm install
+  npm install -f
 else
   echo "No such environment"
 fi
