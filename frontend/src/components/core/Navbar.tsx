@@ -71,14 +71,15 @@ export default function Navbar() {
   };
 
   return (
-    <header className="flex justify-between items-center text-white bg-blue-light dark:bg-blue-dark px-3 p-1">
+    <header className="flex justify-between items-center text-white bg-blue-light dark:bg-blue-dark px-5 p-1">
       <Link href="/" className="flex items-center justify-center">
         <Image
           src="/img/logo_white_full.svg"
           alt="Think diffrent academy"
+          loading="eager"
           height={50}
-          width={200}
-          className="flex items-center max-h-[calc(var(--navbar-height)-10px)]"
+          width={165}
+          className="flex items-center"
         />
       </Link>
       <nav className="hidden sm:flex flex-row space-x-3 md:space-x-5 items-center w-fit">
