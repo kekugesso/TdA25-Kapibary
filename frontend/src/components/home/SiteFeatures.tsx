@@ -24,7 +24,7 @@ export default function SiteFeatures() {
   ];
 
   return (
-    <article id="site-features">
+    <article id="site-features" className="min-h-fit">
       <div className="flex flex-col flex-center text-center text-balance p-4 md:p-12">
         <h1 className="font-semibold text-3xl mb-5 leading-9">
           Připojte se k zábavě a vyzvěte svou mysl
