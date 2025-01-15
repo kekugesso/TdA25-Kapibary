@@ -17,6 +17,8 @@ export default function SaveGame() {
   const router = useRouter();
   const [error, setError] = useState<Error | null>(null);
   const [gameLocation, setGameLocation] = useState<string | null>(null);
+  const [couldNotRedirect, setCouldNotRedirect] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const mutateFn = async (location: string = "") => {
     const res = await fetch(`/api/games/${location}`, {
@@ -34,6 +36,7 @@ export default function SaveGame() {
     localStorage.setItem("gameLocation", data.uuid);
     console.log(`Game saved as ${data.uuid}`);
     router.push(`/game/${data.uuid}`);
+    setTimeout(() => setCouldNotRedirect(true), 5000);
     return data;
   };
 
@@ -69,7 +72,7 @@ export default function SaveGame() {
 
   return (
     <>
-      {isLoadingSave || isLoadingUpdate || error !== null ? (
+      {(isLoadingSave || isLoadingUpdate) && !couldNotRedirect ? (
         <Loading />
       ) : (
         <article>
