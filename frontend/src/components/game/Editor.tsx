@@ -144,14 +144,14 @@ export default function Editor({ data }: { data: string }) {
               <button
                 onClick={handleSave}
                 aria-label="Save Button"
-                className="bg-blue-light dark:bg-blue-dark text-white font-bold text-2xl py-2 px-4 rounded-lg shadow-black-light shadow-sm w-[40%]"
+                className="bg-blue-light dark:bg-blue-dark text-white font-bold text-2xl py-2 px-4 rounded-lg shadow-black-light shadow-sm w-full"
               >
                 Uložit
               </button>
               <button
                 onClick={() => router.back()}
                 aria-label="Dont Save Button"
-                className="bg-red-light dark:bg-red-dark text-white font-bold text-2xl py-2 px-4 rounded-lg shadow-black-light shadow-sm w-[40%]"
+                className="bg-red-light dark:bg-red-dark text-white font-bold text-2xl py-2 px-4 rounded-lg shadow-black-light shadow-sm w-full"
               >
                 Neukládat
               </button>
