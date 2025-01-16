@@ -119,7 +119,7 @@ export default function Games() {
               </p>
             )}
             <div
-              className="fixed bottom-[5dvh] right-[5vw] z-50"
+              className="fixed bottom-[5dvh] right-[5vw] z-20"
               aria-label="New Game button"
             >
               <NewGameButton />
