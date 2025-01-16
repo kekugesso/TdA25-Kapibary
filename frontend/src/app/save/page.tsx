@@ -45,8 +45,7 @@ export default function SaveGame() {
 
     // nuke the data
     const location = localStorage.getItem("gameLocation");
-    if (location) localStorage.removeItem(location);
-    localStorage.removeItem("gameLocation");
+    if (location && location !== "boardGame") localStorage.removeItem(location);
   };
 
   const { mutate: saveGame, isPending: isLoadingSave } = useMutation({
@@ -72,7 +71,12 @@ export default function SaveGame() {
     else saveGame();
   }, [saveGame, updateGame]);
 
-  const handleClose = () => router.back();
+  const handleClose = () => {
+    const location = localStorage.getItem("gameLocation");
+    if (location && location !== "boardGame")
+       router.push(`/game/{location}/edit`);
+    router.push("/editor");
+  };
 
   return (
     <>
