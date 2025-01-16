@@ -117,14 +117,14 @@ class GameView(APIView):
                         cells.append(data_board)
                     else:
                         return Response({"message": "Invalid board content"}, status=422)
+        if countx - counto < 0 or countx - counto > 1:
+            return Response({"message": "Invalid number of X and O"}, status=422)
         for board in boards:
             board.delete()
         for cell in cells:
             serializer_board = BoardSerializer(data=cell)
             if serializer_board.is_valid():
                 serializer_board.save()
-        if countx - counto < 0 or countx - counto > 1:
-            return Response({"message": "Invalid number of X and O"}, status=422)
         if counto >= 5:
             data["gameState"] = "midgame"
         else:
