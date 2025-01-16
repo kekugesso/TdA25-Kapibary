@@ -12,7 +12,7 @@ export default function Greeter() {
   return (
     <article
       id="greeter"
-      className="flex flex-col flex-center h-[calc(100dvh-var(--navbar-height))] text-center text-balance bg-cover bg-center"
+      className="flex flex-col flex-center min-h-[400px] h-[calc(100dvh-var(--navbar-height))] text-center text-balance bg-cover bg-center"
       style={{
         backgroundImage:
           "linear-gradient(#00000081, #00000080), url('/img/landing_page.png')",
