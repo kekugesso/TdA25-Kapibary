@@ -33,7 +33,10 @@ export default function Editor({ data }: { data: string }) {
     return xCount > oCount ? "O" : "X";
   };
 
-  document.body.classList.add("disable-footer");
+  useEffect(() => {
+    document.body.classList.add("disable-footer");
+    return () => document.body.classList.remove("disable-footer");
+  }, []);
 
   useEffect(() => {
     if (!data) return;
