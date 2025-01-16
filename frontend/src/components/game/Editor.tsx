@@ -152,7 +152,9 @@ export default function Editor({ data }: { data: string }) {
                 Uložit
               </button>
               <button
-                onClick={() => router.back()}
+                onClick={() =>
+                  router.push(data !== "boardGame" ? `/game/${data}` : "/game")
+                }
                 aria-label="Dont Save Button"
                 className="bg-red-light dark:bg-red-dark text-white font-bold text-2xl py-2 px-4 rounded-lg shadow-black-light shadow-sm w-full"
               >
