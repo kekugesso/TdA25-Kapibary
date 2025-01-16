@@ -54,7 +54,7 @@ export default function NewGameButton() {
   }, [isOpen]);
 
   return (
-    <div className="flex flex-row flex-center rounded-lg bg-gradient-to-tr from-blue-light to-blue-dark">
+    <div className="flex flex-row flex-center rounded-lg bg-blue-light dark:bg-blue-dark">
       <button
         onClick={isOpen ? CreateAndEdit : handleClick}
         className={`h-[50px] flex text-white font-medium transition-[width] duration-300 shadow-xl items-center
