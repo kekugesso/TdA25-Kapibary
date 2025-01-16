@@ -18,7 +18,6 @@ export default function SaveGame() {
   const [error, setError] = useState<Error | null>(null);
   const [gameLocation, setGameLocation] = useState<string | null>(null);
   const [couldNotRedirect, setCouldNotRedirect] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   const mutateFn = async (location: string = "") => {
     const res = await fetch(`/api/games/${location}`, {
