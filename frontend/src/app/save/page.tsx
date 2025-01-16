@@ -73,10 +73,12 @@ export default function SaveGame() {
 
   const handleClose = () => {
     const location = localStorage.getItem("gameLocation");
-    localStorage.removeItem("gameLocation")
-    if (location && location !== "boardGame")
-       router.push(`/game/{location}/edit`);
-    router.push("/editor");
+    localStorage.removeItem("gameLocation");
+    router.push(
+      location && location !== "boardGame"
+        ? `/game/${location}/edit`
+        : "/editor",
+    );
   };
 
   return (
