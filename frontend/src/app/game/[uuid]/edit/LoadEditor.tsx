@@ -32,6 +32,7 @@ export function LoadEditor({ uuid }: { uuid: string }) {
   useEffect(() => {
     if (data) {
       localStorage.setItem(uuid, JSON.stringify(data));
+      localStorage.setItem("gameLocation", uuid);
       router.push("/editor");
     }
   }, [data, uuid, router]);
