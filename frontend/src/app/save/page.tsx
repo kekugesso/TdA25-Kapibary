@@ -42,6 +42,11 @@ export default function SaveGame() {
   const dataError = (error: Error) => {
     console.log(error);
     setError(error);
+
+    // nuke the data
+    const location = localStorage.getItem("gameLocation");
+    if (location) localStorage.removeItem(location);
+    localStorage.removeItem("gameLocation");
   };
 
   const { mutate: saveGame, isPending: isLoadingSave } = useMutation({
