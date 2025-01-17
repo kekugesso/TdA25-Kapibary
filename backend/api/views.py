@@ -2,6 +2,7 @@ import uuid
 from datetime import timedelta
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Game, Board
@@ -119,7 +120,10 @@ class GameView(APIView):
             200: JSON with the game
             404: JSON with game not found
         """
-        game = get_object_or_404(Game, uuid=uuid1)
+        try:
+            game = get_object_or_404(Game, uuid=uuid1)
+        except ValidationError:
+            return Response({"message": "Invalid data"}, status=400)
         serializer = GameSerializer(game)
         data = serializer.data
         matrix = [["" for _ in range(15)] for _ in range(15)]
@@ -135,7 +139,10 @@ class GameView(APIView):
             204: no content
             404: JSON with game not found
         """
-        game = get_object_or_404(Game, uuid=uuid1)
+        try:
+            game = get_object_or_404(Game, uuid=uuid1)
+        except ValidationError:
+            return Response({"message": "Invalid data"}, status=400)
         game.delete()
         return Response(status=204)
 
@@ -147,7 +154,10 @@ class GameView(APIView):
             404: JSON with game not found
             422: JSON with bad data
         """
-        game = get_object_or_404(Game, uuid=uuid1)
+        try:
+            game = get_object_or_404(Game, uuid=uuid1)
+        except ValidationError:
+            return Response({"message": "Invalid data"}, status=400)
         boards = Board.objects.all().filter(game=uuid1)
         data = request.data
         countx = 0
