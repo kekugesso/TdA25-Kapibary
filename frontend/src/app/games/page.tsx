@@ -115,7 +115,7 @@ export default function Games() {
               games.map((game) => <Card key={game.uuid} game={game} />)
             ) : (
               <p className="self-center text-center text-balance font-medium">
-                No games found...
+                Žádné hry nebyly nalezeny...
               </p>
             )}
             <div
