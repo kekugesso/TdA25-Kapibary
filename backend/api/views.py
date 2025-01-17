@@ -44,7 +44,10 @@ class AllGamesView(APIView):
         data = request.data
         countx = 0
         counto = 0
-        board = data.pop('board')
+        try:
+            board = data.pop('board')
+        except KeyError:
+            return Response({"message": "Invalid board"}, status=400)
         if len(board) != 15 or len(board[0]) != 15:
             return Response({"message": "Invalid board size"}, status=422)
         for i in range(len(board)):
@@ -150,7 +153,10 @@ class GameView(APIView):
         countx = 0
         counto = 0
         data["uuid"] = uuid1
-        board_main = data.pop('board')
+        try:
+            board_main = data.pop('board')
+        except KeyError:
+            return Response({"message": "Invalid board"}, status=400)
         cells = []
         if (len(board_main) != 15 or len(board_main[0]) != 15):
             return Response({"message": "Invalid board size"}, status=422)
