@@ -68,7 +68,7 @@ export function LoadGame({ uuid }: { uuid: string }) {
           <ModalHeader>Error</ModalHeader>
           <ModalBody>
             <p className="text-center text-balance font-medium">
-              {error.message || error.detail || "An error ocured while saving"}
+              {error.message || "An error ocured while saving"}
             </p>
           </ModalBody>
           <ModalFooter>
