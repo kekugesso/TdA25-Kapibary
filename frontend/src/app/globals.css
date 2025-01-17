@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --footer-height: 50px;
+  --navbar-height: 70px;
+  --wrapper-height: calc(100dvh - var(--footer-height));
+  --page-height: calc(var(--wrapper-height) - var(--navbar-height));
+  --footer-display: flex;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+@font-face {
+  font-family: "Dosis";
+  src: url("/fonts/Dosis-VariableFont_wght.woff2") format("woff2");
+  font-variation-settings: "wght" 375;
+  font-weight: 100 900; /* Define the weight range for the variable font */
+  font-style: normal;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: "Dosis";
+}
+
+.wrapper {
+  min-height: var(--wrapper-height);
+  width: 100%;
+}
+
+footer {
+  height: var(--footer-height);
+  box-sizing: border-box;
+  width: 100%;
+  display: var(--footer-display);
+  justify-content: center;
+  align-items: center;
+}
+
+.disable-footer {
+  --footer-display: none;
+  --wrapper-height: 100dvh;
+  --page-height: calc(100dvh - var(--navbar-height));
+}
+
+header {
+  height: var(--navbar-height);
+  width: 100%;
+}
+
+article {
+  min-height: var(--page-height);
+}
+
+.flex-center {
+  justify-content: center;
+  align-items: center;
+}
