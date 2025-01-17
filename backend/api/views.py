@@ -152,6 +152,7 @@ class GameView(APIView):
         edits one game
         returns:
             200: JSON with the edited game
+            400: JSON with bad data
             404: JSON with game not found
             422: JSON with bad data
         """
