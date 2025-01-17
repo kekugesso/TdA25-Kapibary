@@ -114,7 +114,7 @@ export default function Editor({ data }: { data: string }) {
               <input
                 type="text"
                 id="name"
-                value={board.name}
+                value={board.name || ""}
                 onChange={handleChange}
                 placeholder="Název hry"
                 className="w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none focus:ring-1 focus:ring-blue-light"
@@ -126,7 +126,7 @@ export default function Editor({ data }: { data: string }) {
               </label>
               <select
                 id="difficulty"
-                value={board.difficulty}
+                value={board.difficulty || ""}
                 onChange={handleChange}
                 className="w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none focus:ring-1 focus:ring-blue-light"
               >

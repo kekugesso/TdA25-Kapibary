@@ -3,7 +3,6 @@
 import { BoardData } from "@/types/board/BoardData";
 import { useEffect, useState } from "react";
 import { CreateMatrix } from "../game/MatrixFunctions";
-import { difficulty } from "@/types/search/difficulty";
 import { useRouter } from "next/navigation";
 
 export default function NewGameButton() {
@@ -11,12 +10,13 @@ export default function NewGameButton() {
 
   const CreateNewGame = () => {
     const initialBoardData: BoardData = {
-      name: "Nová hra",
-      difficulty: difficulty.beginner,
+      name: null,
+      difficulty: null,
       board: CreateMatrix(15, 15),
     };
 
     localStorage.setItem("boardData", JSON.stringify(initialBoardData));
+    localStorage.setItem("gameLocation", "boardData");
   };
 
   const CreateAndPlay = () => {

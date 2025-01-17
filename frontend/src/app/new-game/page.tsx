@@ -9,7 +9,6 @@ import {
 } from "@/components/core/Modal";
 import { CreateMatrix } from "@/components/game/MatrixFunctions";
 import { BoardData } from "@/types/board/BoardData";
-import { difficulty } from "@/types/search/difficulty";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -19,8 +18,8 @@ export default function NewGame() {
 
   const CreateNewGame = useCallback(() => {
     const initialBoardData: BoardData = {
-      name: "Nová hra",
-      difficulty: difficulty.beginner,
+      name: null,
+      difficulty: null,
       board: CreateMatrix(15, 15),
     };
 

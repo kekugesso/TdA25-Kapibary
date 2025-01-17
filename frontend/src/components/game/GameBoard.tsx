@@ -174,8 +174,14 @@ export default function GameBoard({ data }: { data: GameData }) {
 
           <div className="flex flex-col items-center flex-center">
             <div className="flex justify-between text-2xl font-semibold dark:text-white text-black w-full">
-              <p>{game.name}</p>
-              <p>{DifficultyToString(game.difficulty)}</p>
+              <p className="max-w-[50%] text-ellipsis overflow-hidden">
+                {game.name}
+              </p>
+              <p className="max-w-[50%] text-ellipsis overflow-hidden">
+                {game.difficulty !== null
+                  ? DifficultyToString(game.difficulty)
+                  : ""}
+              </p>
             </div>
             <Board board={game.board} handleClick={handleClick} />
             <div className="flex justify-center gap-2 py-2">
@@ -261,9 +267,18 @@ export default function GameBoard({ data }: { data: GameData }) {
           <ModalFooter>
             <button
               onClick={() => setWinner(null)}
-              className="bg-blue-light dark:bg-blue-dark text-white text-xl dark:text-black font-bold rounded-lg py-2 px-6"
+              className="bg-red-light dark:bg-red-dark text-white text-xl font-bold rounded-lg py-2 px-6"
             >
-              OK
+              Zavřít
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem("boardData");
+                router.push("/new-game");
+              }}
+              className="bg-blue-light dark:bg-blue-dark text-white text-xl font-bold rounded-lg py-2 px-6 ml-4"
+            >
+              Nová hra
             </button>
           </ModalFooter>
         </Modal>
@@ -279,9 +294,18 @@ export default function GameBoard({ data }: { data: GameData }) {
           <ModalFooter>
             <button
               onClick={() => setTie(false)}
-              className="bg-blue-light dark:bg-blue-dark text-white dark:text-black font-semibold rounded-lg py-2 px-6"
+              className="bg-red-light dark:bg-red-dark text-white font-semibold rounded-lg py-2 px-6"
             >
-              ok
+              Zavřít
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem("boardData");
+                router.push("/new-game");
+              }}
+              className="bg-blue-light dark:bg-blue-dark text-white text-xl font-bold rounded-lg py-2 px-6 ml-4"
+            >
+              Nová hra
             </button>
           </ModalFooter>
         </Modal>
