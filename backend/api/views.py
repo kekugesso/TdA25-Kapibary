@@ -123,8 +123,8 @@ class GameView(APIView):
         """
         try:
             game = Game.objects.get(uuid=uuid1)
-        except ValidationError or Game.DoesNotExist:
-            return Response({"message": "Neexistujicí hra."}, status=400)
+        except Exception as e:
+            return Response({"message": "Neexistujicí hra."}, status=404)
         serializer = GameSerializer(game)
         data = serializer.data
         matrix = [["" for _ in range(15)] for _ in range(15)]
@@ -142,8 +142,8 @@ class GameView(APIView):
         """
         try:
             game = Game.objects.get(uuid=uuid1)
-        except ValidationError or Game.DoesNotExist:
-            return Response({"message": "Neexistujicí hra."}, status=400)
+        except Exception as e:
+            return Response({"message": "Neexistujicí hra."}, status=404)
         game.delete()
         return Response(status=204)
 
@@ -158,8 +158,8 @@ class GameView(APIView):
         """
         try:
             game = Game.objects.get(uuid=uuid1)
-        except ValidationError or Game.DoesNotExist:
-            return Response({"message": "Neexistujicí hra."}, status=400)
+        except Exception as e:
+            return Response({"message": "Neexistujicí hra."}, status=404)
         boards = Board.objects.all().filter(game=uuid1)
         data = request.data
         countx = 0
