@@ -12,12 +12,18 @@ import { GameData } from "@/types/games/GameData";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import SaveModal from "./SaveModal";
 
 export default function SaveGame() {
   const router = useRouter();
   const [error, setError] = useState<Error | null>(null);
   const [gameLocation, setGameLocation] = useState<string | null>(null);
   const [couldNotRedirect, setCouldNotRedirect] = useState(false);
+  const [data, setData] = useState<GameData | null>(null);
+
+  const isDataValid = (data: GameData) => {
+    return data.board && data.difficulty && data.name;
+  };
 
   const mutateFn = async (location: string = "") => {
     const res = await fetch(`/api/games/${location}`, {
@@ -68,7 +74,20 @@ export default function SaveGame() {
     const gameLocation = localStorage.getItem("gameLocation");
     setGameLocation(gameLocation);
     if (gameLocation && gameLocation !== "boardData") updateGame(gameLocation);
-    else saveGame();
+    else {
+      const boardData = localStorage.getItem("boardData");
+      if (boardData && isDataValid(JSON.parse(boardData))) saveGame();
+      else if (boardData) {
+        setData(JSON.parse(boardData));
+        return;
+      } else
+        setError({
+          name: "Data error",
+          message: "No data to save",
+        });
+
+      localStorage.removeItem("boardData");
+    }
   }, [saveGame, updateGame]);
 
   const handleClose = () => {
@@ -81,9 +100,15 @@ export default function SaveGame() {
     );
   };
 
+  const handleSave = (data: GameData) => {
+    localStorage.setItem("boardData", JSON.stringify(data));
+    setData(null);
+    saveGame();
+  };
+
   return (
     <>
-      {(isLoadingSave || isLoadingUpdate) && !couldNotRedirect ? (
+      {data || ((isLoadingSave || isLoadingUpdate) && !couldNotRedirect) ? (
         <Loading />
       ) : (
         <article>
@@ -111,6 +136,13 @@ export default function SaveGame() {
             </button>
           </ModalFooter>
         </Modal>
+      )}
+      {data && (
+        <SaveModal
+          dataSource={data}
+          saveDataAction={handleSave}
+          handleClose={handleClose}
+        />
       )}
     </>
   );
