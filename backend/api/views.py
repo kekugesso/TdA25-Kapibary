@@ -1,9 +1,7 @@
 import uuid
-import requests
-from datetime import datetime, timedelta
+from datetime import timedelta
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.http import HttpResponse, JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Game, Board
@@ -11,7 +9,19 @@ from .serializers import GameSerializer, BoardSerializer
 
 
 class AllGamesView(APIView):
+    """
+    class for creating and retrieving all games
+
+    methods:
+        get: retrieves all games
+        post: creates a new game
+    """
     def get(self, request):
+        """
+        retrieves all games
+        returns:
+            200: JSON with all games
+        """
         games = Game.objects.all()
         serializer = GameSerializer(games, many=True)
         result = []
@@ -24,6 +34,13 @@ class AllGamesView(APIView):
         return Response(result)
 
     def post(self, request):
+        """
+        creates a new game
+        returns:
+            200: JSON with the created game
+            422: JSON with bad board data
+            400: JSON with bad data
+        """
         data = request.data
         countx = 0
         counto = 0
@@ -38,7 +55,8 @@ class AllGamesView(APIView):
                     elif board[i][j] == "O":
                         counto += 1
         if countx - counto < 0 or countx - counto > 1:
-            return Response({"message": "Invalid number of X and O"}, status=422)
+            return Response({"message": "Invalid number of X and O"},
+                            status=422)
         if counto >= 5:
             data["gameState"] = "midgame"
         else:
@@ -62,14 +80,18 @@ class AllGamesView(APIView):
                         countx += 1
                     elif board[i][j] == "O":
                         counto += 1
-                    data_board = {"uuid": str(uuid.uuid4()),"row": i, "column": j, "symbol": board[i][j], "game": data["uuid"]}
+                    data_board = {"uuid": str(uuid.uuid4()),
+                                  "row": i,
+                                  "column": j,
+                                  "symbol": board[i][j], "game": data["uuid"]}
                     serializer_board = BoardSerializer(data=data_board)
                     if serializer_board.is_valid():
                         serializer_board.save()
                     else:
                         game = Game.objects.get(uuid=data["uuid"])
                         game.delete()
-                        return Response({"message": "Invalid board content"}, status=422)
+                        return Response({"message": "Invalid board content"},
+                                        status=422)
         data = serializer.data
         matrix = [["" for _ in range(15)] for _ in range(15)]
         for symbol in data.get("board"):
@@ -77,8 +99,23 @@ class AllGamesView(APIView):
         data["board"] = matrix
         return Response(data, status=201)
 
+
 class GameView(APIView):
+    """
+    class for editing, deleting and retrieving one game
+
+    methods:
+        get: retrieves one game
+        delete: deletes one game
+        put: edits one game
+    """
     def get(self, request, uuid1):
+        """
+        retrieves one game
+        returns:
+            200: JSON with the game
+            404: JSON with game not found
+        """
         game = get_object_or_404(Game, uuid=uuid1)
         serializer = GameSerializer(game)
         data = serializer.data
@@ -89,11 +126,24 @@ class GameView(APIView):
         return Response(data)
 
     def delete(self, request, uuid1):
+        """
+        deletes one game
+        returns:
+            204: no content
+            404: JSON with game not found
+        """
         game = get_object_or_404(Game, uuid=uuid1)
         game.delete()
         return Response(status=204)
 
     def put(self, request, uuid1):
+        """
+        edits one game
+        returns:
+            200: JSON with the edited game
+            404: JSON with game not found
+            422: JSON with bad data
+        """
         game = get_object_or_404(Game, uuid=uuid1)
         boards = Board.objects.all().filter(game=uuid1)
         data = request.data
@@ -111,12 +161,17 @@ class GameView(APIView):
                         countx += 1
                     elif board_main[i][j] == "O":
                         counto += 1
-                    data_board = {"uuid": str(uuid.uuid4()),"row": i, "column": j, "symbol": board_main[i][j], "game": uuid1}
+                    data_board = {"uuid": str(uuid.uuid4()),
+                                  "row": i,
+                                  "column": j,
+                                  "symbol": board_main[i][j],
+                                  "game": uuid1}
                     serializer_board = BoardSerializer(data=data_board)
                     if serializer_board.is_valid():
                         cells.append(data_board)
                     else:
-                        return Response({"message": "Invalid board content"}, status=422)
+                        return Response({"message": "Invalid board content"},
+                                        status=422)
         for board in boards:
             board.delete()
         for cell in cells:
@@ -124,7 +179,8 @@ class GameView(APIView):
             if serializer_board.is_valid():
                 serializer_board.save()
         if countx - counto < 0 or countx - counto > 1:
-            return Response({"message": "Invalid number of X and O"}, status=422)
+            return Response({"message": "Invalid number of X and O"},
+                            status=422)
         if counto >= 5:
             data["gameState"] = "midgame"
         else:
@@ -149,22 +205,53 @@ class GameView(APIView):
 
 
 class FilterAPIView(APIView):
+    """
+    class for filtering games
+
+    methods:
+        post: filters games
+    """
     def post(self, request):
+        """
+        filters games
+        returns:
+            200: JSON with filtered games
+            422: JSON with bad data
+        """
         data = request.data
         result = []
-        if (data.get("updatedAt") != "24hours" and data.get("updatedAt") != "7days" and data.get("updatedAt") != "1month" and data.get("updatedAt") != "3months"):
+        if (data.get("updatedAt") != "24hours"
+            and data.get("updatedAt") != "7days"
+            and data.get("updatedAt") != "1month"
+           and data.get("updatedAt") != "3months"):
             return Response({"message": "Invalid updatedAt"}, status=422)
         for dif in data.get("difficulty"):
-            if(dif != "beginner" and dif != "medium" and dif != "easy" and dif != "extreme" and dif != "hard"):
+            if (dif != "beginner"
+                and dif != "medium"
+                and dif != "easy"
+                and dif != "extreme"
+               and dif != "hard"):
                 return Response({"message": "Invalid difficulty"}, status=422)
             if (data.get("updatedAt") == "24hours"):
-                games = Game.objects.filter(difficulty=dif, updatedAt__gt=timezone.now() - timedelta(hours=24))
+                games = Game.objects.filter(
+                    difficulty=dif,
+                    updatedAt__gt=timezone.now() - timedelta(hours=24)
+                )
             elif (data.get("updatedAt") == "7days"):
-                games = Game.objects.filter(difficulty=dif, updatedAt__gt=timezone.now() - timedelta(days=7))
+                games = Game.objects.filter(
+                    difficulty=dif,
+                    updatedAt__gt=timezone.now() - timedelta(days=7)
+                )
             elif (data.get("updatedAt") == "1month"):
-                games = Game.objects.filter(difficulty=dif, updatedAt__gt=timezone.now() - timedelta(days=30))
+                games = Game.objects.filter(
+                    difficulty=dif,
+                    updatedAt__gt=timezone.now() - timedelta(days=30)
+                )
             elif (data.get("updatedAt") == "3months"):
-                games = Game.objects.filter(difficulty=dif, updatedAt__gt=timezone.now() - timedelta(days=90))
+                games = Game.objects.filter(
+                    difficulty=dif,
+                    updatedAt__gt=timezone.now() - timedelta(days=90)
+                )
             serializer = GameSerializer(games, many=True)
             for game in serializer.data:
                 matrix = [["" for _ in range(15)] for _ in range(15)]
@@ -175,14 +262,13 @@ class FilterAPIView(APIView):
         return Response(result)
 
 
-def FrontForFun(request):
-    return HttpResponse("Front for fun", content_type="text/html")
-
-
-def SpecificFrontForFun(request, uuid1):
-    return HttpResponse("Specific front for fun", content_type="text/html")
-
 def can_win_next_move(board, symbol):
+    """
+    checks if the next move can win the game
+    returns:
+        True if the next move can win the game
+        False otherwise
+    """
     size = 15
     for row in range(size):
         for col in range(size):
@@ -191,22 +277,26 @@ def can_win_next_move(board, symbol):
 
             if col <= size - 5:
                 line = [board[row][col + i] for i in range(5)]
-                if all(cell in {symbol, ""} for cell in line) and line.count(symbol) == 4:
+                if (all(cell in {symbol, ""} for cell in line)
+                   and line.count(symbol) == 4):
                     return True
 
             if row <= size - 5:
                 line = [board[row + i][col] for i in range(5)]
-                if all(cell in {symbol, ""} for cell in line) and line.count(symbol) == 4:
+                if (all(cell in {symbol, ""} for cell in line)
+                   and line.count(symbol) == 4):
                     return True
 
             if row <= size - 5 and col <= size - 5:
                 line = [board[row + i][col + i] for i in range(5)]
-                if all(cell in {symbol, ""} for cell in line) and line.count(symbol) == 4:
+                if (all(cell in {symbol, ""} for cell in line)
+                   and line.count(symbol) == 4):
                     return True
 
             if row <= size - 5 and col >= 4:
                 line = [board[row + i][col - i] for i in range(5)]
-                if all(cell in {symbol, ""} for cell in line) and line.count(symbol) == 4:
+                if (all(cell in {symbol, ""} for cell in line)
+                   and line.count(symbol) == 4):
                     return True
 
     return False
