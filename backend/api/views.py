@@ -1,6 +1,5 @@
 import uuid
 from datetime import timedelta
-from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from rest_framework.views import APIView
@@ -48,9 +47,11 @@ class AllGamesView(APIView):
         try:
             board = data.pop('board')
         except KeyError:
-            return Response({"message": "Invalid board"}, status=400)
+            return Response({"message": "Hrací plocha není poslaná."},
+                            status=400)
         if len(board) != 15 or len(board[0]) != 15:
-            return Response({"message": "Invalid board size"}, status=422)
+            return Response({"message": "Rozmer hrací plochy musí byt 15x15."},
+                            status=422)
         for i in range(len(board)):
             for j in range(len(board[i])):
                 if board[i][j] != "":
@@ -59,7 +60,7 @@ class AllGamesView(APIView):
                     elif board[i][j] == "O":
                         counto += 1
         if countx - counto < 0 or countx - counto > 1:
-            return Response({"message": "Invalid number of X and O"},
+            return Response({"message": "Špatný počet X a O."},
                             status=422)
         if counto >= 5:
             data["gameState"] = "midgame"
@@ -94,7 +95,7 @@ class AllGamesView(APIView):
                     else:
                         game = Game.objects.get(uuid=data["uuid"])
                         game.delete()
-                        return Response({"message": "Invalid board content"},
+                        return Response({"message": "Na hrací ploše mohou být jen X a O."},
                                         status=422)
         data = serializer.data
         matrix = [["" for _ in range(15)] for _ in range(15)]
@@ -121,9 +122,9 @@ class GameView(APIView):
             404: JSON with game not found
         """
         try:
-            game = get_object_or_404(Game, uuid=uuid1)
-        except ValidationError:
-            return Response({"message": "Invalid data"}, status=400)
+            game = Game.objects.get(uuid=uuid1)
+        except ValidationError or Game.DoesNotExist:
+            return Response({"message": "Neexistujicí hra."}, status=400)
         serializer = GameSerializer(game)
         data = serializer.data
         matrix = [["" for _ in range(15)] for _ in range(15)]
@@ -140,9 +141,9 @@ class GameView(APIView):
             404: JSON with game not found
         """
         try:
-            game = get_object_or_404(Game, uuid=uuid1)
-        except ValidationError:
-            return Response({"message": "Invalid data"}, status=400)
+            game = Game.objects.get(uuid=uuid1)
+        except ValidationError or Game.DoesNotExist:
+            return Response({"message": "Neexistujicí hra."}, status=400)
         game.delete()
         return Response(status=204)
 
@@ -155,9 +156,9 @@ class GameView(APIView):
             422: JSON with bad data
         """
         try:
-            game = get_object_or_404(Game, uuid=uuid1)
-        except ValidationError:
-            return Response({"message": "Invalid data"}, status=400)
+            game = Game.objects.get(uuid=uuid1)
+        except ValidationError or Game.DoesNotExist:
+            return Response({"message": "Neexistujicí hra."}, status=400)
         boards = Board.objects.all().filter(game=uuid1)
         data = request.data
         countx = 0
@@ -166,10 +167,11 @@ class GameView(APIView):
         try:
             board_main = data.pop('board')
         except KeyError:
-            return Response({"message": "Invalid board"}, status=400)
+            return Response({"message": "Hrací plocha není poslaná."}, status=400)
         cells = []
         if (len(board_main) != 15 or len(board_main[0]) != 15):
-            return Response({"message": "Invalid board size"}, status=422)
+            return Response({"message": "Rozmer hrací plochy musí byt 15x15."},
+                            status=422)
         for i in range(len(board_main)):
             for j in range(len(board_main[0])):
                 if board_main[i][j] != "":
@@ -186,9 +188,10 @@ class GameView(APIView):
                     if serializer_board.is_valid():
                         cells.append(data_board)
                     else:
-                        return Response({"message": "Invalid board content"}, status=422)
+                        return Response({"message": "Na hrací ploše mohou být jen X a O."},
+                                        status=422)
         if countx - counto < 0 or countx - counto > 1:
-            return Response({"message": "Invalid number of X and O"}, status=422)
+            return Response({"message": "Špatný počet X a O."}, status=422)
         for board in boards:
             board.delete()
         for cell in cells:
