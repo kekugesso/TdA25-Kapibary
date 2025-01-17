@@ -17,14 +17,13 @@ export function LoadGame({ uuid }: { uuid: string }) {
   const router = useRouter();
   const [game, setGame] = useState<GameData | null>(null);
 
-  const getGame = (uuid: string) => {
+  async function getGame(uuid: string): Promise<GameData> {
     const localData = window.localStorage.getItem(uuid);
-    if (localData) return JSON.parse(localData) as GameData;
-    else
-      return fetch(`/api/games/${uuid}`)
-        .then((res) => res.json())
-        .then((data) => data as GameData);
-  };
+    if (localData) return (await JSON.parse(localData)) as GameData;
+    const res = await fetch(`/api/games/${uuid}`);
+    if (res.status >= 300) throw await res.json();
+    return (await res.json()) as GameData;
+  }
 
   const { isLoading, error, data } = useQuery({
     queryKey: ["gameBoard"],
@@ -66,10 +65,10 @@ export function LoadGame({ uuid }: { uuid: string }) {
       )}
       {error && (
         <Modal open={true} onClose={handleClose}>
-          <ModalHeader>Error: {error.name}</ModalHeader>
+          <ModalHeader>Error</ModalHeader>
           <ModalBody>
             <p className="text-center text-balance font-medium">
-              {error.message}
+              {error.message || error.detail || "An error ocured while saving"}
             </p>
           </ModalBody>
           <ModalFooter>
