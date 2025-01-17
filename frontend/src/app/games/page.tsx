@@ -75,7 +75,7 @@ export default function Games() {
     setFilterFunction(
       () => (data: GameData[]) =>
         data.filter((game) =>
-          game.name.toLowerCase().includes(search.toLowerCase()),
+          game.name?.toLowerCase().includes(search.toLowerCase()),
         ),
     );
   };
