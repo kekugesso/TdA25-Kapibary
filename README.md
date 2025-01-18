@@ -1,4 +1,4 @@
-# A tic-tac-toe web-app for the Tour De App 2024 Contest
+# A tic-tac-toe web-app for the Tour De App 2025 Contest
 
 # About the team
 
@@ -9,7 +9,7 @@ Our team members are:
 - [Vojtěch Sládek](https://github.com/VSladek) - front-end developer
 - Karolína Navrátilová - designer and tester
 
-We love coding and we are always looking for new challenges. We are excited to participate in the Tour De App 2024 Contest and we hope to win!
+We love coding and we are always looking for new challenges. We are excited to participate in the Tour De App 2025 Contest and we hope to win!
 
 # About the app
 
