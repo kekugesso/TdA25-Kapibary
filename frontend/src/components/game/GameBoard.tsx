@@ -49,7 +49,7 @@ export default function GameBoard({ data }: { data: GameData }) {
 
     if (confirm("Opravdu chcete smazat tuto hru?")) {
       if (game.uuid) deleteGame();
-      localStorage.clear();
+      localStorage.removeItem(game.uuid || "boardData");
       router.push("/games");
     }
   };
