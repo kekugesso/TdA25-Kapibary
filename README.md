@@ -7,7 +7,7 @@ Our team members are:
 
 - [Vitalii Myronov](https://github.com/kekugesso) (team lead) - back-end developer
 - [Vojtěch Sládek](https://github.com/VSladek) - front-end developer
-- Karolína Navrátilová - designer and tester
+- [Karolína Navrátilová](https://github.com/Graysi5371) - designer and tester
 
 We love coding and we are always looking for new challenges. We are excited to participate in the Tour De App 2025 Contest and we hope to win!
 
