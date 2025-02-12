@@ -1,5 +1,39 @@
 from rest_framework import serializers
-from .models import Game, Board
+from .models import Game, Board, CustomUser, GameStatus
+
+
+class GameStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GameStatus
+        fields = '__all__'
+
+
+class CustomUserSerializerCreate(serializers.ModelSerializer):
+    """
+    Serializer for the CustomUser model
+    """
+    class Meta:
+        model = CustomUser
+        fields = '__all__'
+
+
+class CustomUserSerializerView(serializers.ModelSerializer):
+    """
+    Serializer for the CustomUser model
+    """
+    createdAt = serializers.DateTimeField(source='date_joined', read_only=True)
+
+    class Meta:
+        """Meta class for the CustomUserSerializer
+
+        Args:
+            serializers ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
+        model = CustomUser
+        fields = ['uuid', 'elo', 'createdAt', 'email', 'username']
 
 
 class BoardSerializer(serializers.ModelSerializer):

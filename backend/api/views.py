@@ -1,12 +1,107 @@
 import uuid
 from datetime import timedelta
 from django.utils import timezone
-from django.core.exceptions import ValidationError
+from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Game, Board
-from .serializers import GameSerializer, BoardSerializer
+from rest_framework.authtoken.models import Token
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from .models import Game, Board, CustomUser, GameStatus
+from .serializers import GameSerializer, BoardSerializer, CustomUserSerializerView, CustomUserSerializerCreate, GameStatusSerializer
 
+
+class AllUsersView(APIView):
+    """
+    class for retrieving all users
+
+    methods:
+        get: retrieves all users
+    """
+    def get(self, request):
+        """
+        retrieves all users
+        returns:
+            200: JSON with all users
+        """
+        users = CustomUser.objects.all()
+        serializer = CustomUserSerializerView(users, many=True)
+        data = serializer.data
+        result = []
+        for i in range(len(data)):
+            result.append(count_results(data[i]["uuid"], data[i]))
+        return Response(result, status=200)
+
+    def post(self, request):
+        """
+        creates a new user
+        returns:
+            201: JSON with the created user
+            400: JSON with bad data
+        """
+        serializer = CustomUserSerializerCreate(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+        user = CustomUser.objects.create_user(**serializer.data)
+        serializer = CustomUserSerializerView(user)
+        result = count_results(user.uuid, serializer.data)
+        return Response(result, status=201)
+
+
+class UserView(APIView):
+    """
+    class for retrieving one user
+
+    methods:
+        get: retrieves one user
+    """
+    def get(self, request, uuid1):
+        """
+        retrieves one user
+        returns:
+            200: JSON with the user
+            404: JSON with user not found
+        """
+        try:
+            user = CustomUser.objects.get(uuid=uuid1)
+        except Exception as e:
+            return Response({"message": "Neexistujicí uživatel."}, status=404)
+        serializer = CustomUserSerializerView(user)
+        result = count_results(user.uuid, serializer.data)
+        return Response(result)
+    def delete(self, request, uuid1):
+        """
+        deletes one user
+        returns:
+            204: no content
+            404: JSON with user not found
+        """
+        try:
+            user = CustomUser.objects.get(uuid=uuid1)
+        except Exception as e:
+            return Response({"message": "Neexistujicí uživatel."}, status=404)
+        user.delete()
+        return Response(status=204)
+
+    def put(self, request, uuid1):
+        """
+        edits one user
+        returns:
+            200: JSON with the edited user
+            400: JSON with bad data
+            404: JSON with user not found
+        """
+        try:
+            user = CustomUser.objects.get(uuid=uuid1)
+        except Exception as e:
+            return Response({"message": "Neexistujicí uživatel."}, status=404)
+        serializer = CustomUserSerializerCreate(user, data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+        user = serializer.save()
+        serializer = CustomUserSerializerView(user)
+        result = count_results(user.uuid, serializer.data)
+        return Response(result)
 
 class AllGamesView(APIView):
     """
@@ -318,3 +413,52 @@ def can_win_next_move(board, symbol):
                     return True
 
     return False
+
+
+class Logout(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        request.user.auth_token.delete()
+        return Response(status=200)
+
+
+class Login(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        data = request.data
+        user = get_object_or_404(CustomUser, username=data['username'])
+        if not user.check_password(data['password']):
+            return Response(status=401)
+        token, created = Token.objects.get_or_create(user=user)
+        serializer = CustomUserSerializerView(user)
+        return Response({'token': token.key, "user": serializer.data}, status=200)
+
+
+class CheckToken(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = CustomUser.objects.get(uuid=request.user.uuid)
+        serializer = CustomUserSerializerView(user)
+        return Response(serializer.data, status=200)
+
+
+def count_results(uuid, data):
+    result = data
+    games = GameStatus.objects.all().filter(player_id=uuid)
+    count_win = 0
+    count_lose = 0
+    count_draw = 0
+    for game in games:
+        if game.result == "win":
+            count_win += 1
+        elif game.result == "lose":
+            count_lose += 1
+        elif game.result == "draw":
+            count_draw += 1
+    result["wins"] = count_win
+    result["losses"] = count_lose
+    result["draws"] = count_draw
+    return result
