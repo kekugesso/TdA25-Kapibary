@@ -175,6 +175,7 @@ class AllGamesView(APIView):
             serializer.save()
         else:
             return Response(serializer.errors, status=400)
+        datagame = GameSerializer(serializer.data).data
         for i in range(len(board)):
             for j in range(len(board[0])):
                 if board[i][j] != "":
@@ -182,15 +183,14 @@ class AllGamesView(APIView):
                         countx += 1
                     elif board[i][j] == "O":
                         counto += 1
-                    data_board = {"uuid": str(uuid.uuid4()),
-                                  "row": i,
+                    data_board = {"row": i,
                                   "column": j,
-                                  "symbol": board[i][j], "game": data["uuid"]}
+                                  "symbol": board[i][j], "game": datagame["uuid"]}
                     serializer_board = BoardSerializer(data=data_board)
                     if serializer_board.is_valid():
                         serializer_board.save()
                     else:
-                        game = Game.objects.get(uuid=data["uuid"])
+                        game = Game.objects.get(uuid=datagame["uuid"])
                         game.delete()
                         return Response({"message": "Na hrací ploše mohou být jen X a O."},
                                         status=422)
@@ -278,8 +278,7 @@ class GameView(APIView):
                         countx += 1
                     elif board_main[i][j] == "O":
                         counto += 1
-                    data_board = {"uuid": str(uuid.uuid4()),
-                                  "row": i,
+                    data_board = {"row": i,
                                   "column": j,
                                   "symbol": board_main[i][j],
                                   "game": uuid1}
