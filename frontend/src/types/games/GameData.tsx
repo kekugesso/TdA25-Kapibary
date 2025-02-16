@@ -3,8 +3,8 @@ import { GameStateType } from "@/types/games/GameState";
 
 type GameData = BoardData & {
   uuid: string;
-  updatedAt: Date;
-  createdAt: Date;
+  updatedAt: string;
+  createdAt: string;
   gameState: GameStateType;
 };
 

@@ -2,8 +2,8 @@ import { difficulty } from "@/types/search/difficulty";
 import { BoardType } from "@/types/board/BoardType";
 
 type BoardData = {
-  name: string;
-  difficulty: difficulty;
+  name: string | null;
+  difficulty: difficulty | null;
   board: BoardType;
 };
 

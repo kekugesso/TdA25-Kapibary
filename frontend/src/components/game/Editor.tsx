@@ -33,7 +33,10 @@ export default function Editor({ data }: { data: string }) {
     return xCount > oCount ? "O" : "X";
   };
 
-  document.body.classList.add("disable-footer");
+  useEffect(() => {
+    document.body.classList.add("disable-footer");
+    return () => document.body.classList.remove("disable-footer");
+  }, []);
 
   useEffect(() => {
     if (!data) return;
@@ -111,7 +114,7 @@ export default function Editor({ data }: { data: string }) {
               <input
                 type="text"
                 id="name"
-                value={board.name}
+                value={board.name || ""}
                 onChange={handleChange}
                 placeholder="Název hry"
                 className="w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none focus:ring-1 focus:ring-blue-light"
@@ -123,7 +126,7 @@ export default function Editor({ data }: { data: string }) {
               </label>
               <select
                 id="difficulty"
-                value={board.difficulty}
+                value={board.difficulty || ""}
                 onChange={handleChange}
                 className="w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none focus:ring-1 focus:ring-blue-light"
               >
@@ -144,14 +147,16 @@ export default function Editor({ data }: { data: string }) {
               <button
                 onClick={handleSave}
                 aria-label="Save Button"
-                className="bg-blue-light dark:bg-blue-dark text-white font-bold text-2xl py-2 px-4 rounded-lg shadow-black-light shadow-sm w-[40%]"
+                className="bg-blue-light dark:bg-blue-dark text-white font-bold text-2xl py-2 px-4 rounded-lg shadow-black-light shadow-sm w-full"
               >
                 Uložit
               </button>
               <button
-                onClick={() => router.back()}
+                onClick={() =>
+                  router.push(data !== "boardGame" ? `/game/${data}` : "/game")
+                }
                 aria-label="Dont Save Button"
-                className="bg-red-light dark:bg-red-dark text-white font-bold text-2xl py-2 px-4 rounded-lg shadow-black-light shadow-sm w-[40%]"
+                className="bg-red-light dark:bg-red-dark text-white font-bold text-2xl py-2 px-4 rounded-lg shadow-black-light shadow-sm w-full"
               >
                 Neukládat
               </button>

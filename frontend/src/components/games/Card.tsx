@@ -16,10 +16,12 @@ export default function Card({ game }: { game: GameData }) {
     <div key={game.uuid} aria-label="Game Card" className="flex flex-center">
       <div className="w-72 flex flex-col shadow-lg bg-white dark:bg-black rounded-lg items-center justify-between overflow-hidden">
         <div className="flex justify-between w-full h-fit bg-blue-light dark:bg-blue-dark">
-          <p className="p-3 text-2xl font-bold text-white">{game.name}</p>
+          <p className="p-3 text-2xl font-bold text-white text-ellipsis overflow-hidden">
+            {game.name}
+          </p>
           <Image
             src={`/img/level_${game.difficulty}.svg`}
-            alt={game.name}
+            alt={game.difficulty || "Game Difficulty"}
             width={40}
             height={40}
             className="mx-3"
@@ -27,7 +29,7 @@ export default function Card({ game }: { game: GameData }) {
         </div>
 
         <p className="px-3 py-2 text-xl font-semibold self-start">
-          {DifficultyToString(game.difficulty)}
+          {game.difficulty ? DifficultyToString(game.difficulty) : "N/A"}
         </p>
         <p className="px-3 py-2 text-xl font-semibold self-start">
           {UpdatedAtToString(UpdatedAtFromStringDate(game.updatedAt))}

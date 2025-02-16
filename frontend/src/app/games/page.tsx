@@ -75,7 +75,7 @@ export default function Games() {
     setFilterFunction(
       () => (data: GameData[]) =>
         data.filter((game) =>
-          game.name.toLowerCase().includes(search.toLowerCase()),
+          game.name?.toLowerCase().includes(search.toLowerCase()),
         ),
     );
   };
@@ -115,11 +115,11 @@ export default function Games() {
               games.map((game) => <Card key={game.uuid} game={game} />)
             ) : (
               <p className="self-center text-center text-balance font-medium">
-                No games found...
+                Žádné hry nebyly nalezeny...
               </p>
             )}
             <div
-              className="fixed bottom-[5dvh] right-[5vw] z-50"
+              className="fixed bottom-[5dvh] right-[5vw] z-20"
               aria-label="New Game button"
             >
               <NewGameButton />

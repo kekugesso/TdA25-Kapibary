@@ -38,20 +38,27 @@ export function Modal({ children, open, onClose }: ModalProps) {
 
 interface ModalSectionProps {
   children: ReactNode;
+  className?: string;
 }
 
-export function ModalHeader({ children }: ModalSectionProps) {
+export function ModalHeader({
+  children,
+  className = "pb-4",
+}: ModalSectionProps) {
   return (
-    <div className="pb-4">
+    <div className={className}>
       <h2 className="text-xl font-semibold">{children}</h2>
     </div>
   );
 }
 
-export function ModalBody({ children }: ModalSectionProps) {
-  return <div className="py-4">{children}</div>;
+export function ModalBody({ children, className = "py-4" }: ModalSectionProps) {
+  return <div className={className}>{children}</div>;
 }
 
-export function ModalFooter({ children }: ModalSectionProps) {
-  return <div className="flex flex-center">{children}</div>;
+export function ModalFooter({
+  children,
+  className = "flex flex-center",
+}: ModalSectionProps) {
+  return <div className={className}>{children}</div>;
 }

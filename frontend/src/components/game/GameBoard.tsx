@@ -33,23 +33,23 @@ export default function GameBoard({ data }: { data: GameData }) {
   const [gameEnd, setGameEnd] = useState(false);
   const [neededToWin, setNeededToWin] = useState(5);
 
-  useEffect(() => {
-    // register some console functions
-    if (window) {
-      window.ContinueGame = () => setGameEnd(false);
-      window.EndGame = () => setGameEnd(true);
-      window.SetWinner = (winner: "X" | "O") => setWinner(winner);
-      window.SetTie = () => setTie(true);
-      window.SetNeededToWin = (count: number) => setNeededToWin(count);
-    }
-  }, []);
+  // useEffect(() => {
+  //   // register some console functions
+  //   if (window) {
+  //     window.ContinueGame = () => setGameEnd(false);
+  //     window.EndGame = () => setGameEnd(true);
+  //     window.SetWinner = (winner: "X" | "O") => setWinner(winner);
+  //     window.SetTie = () => setTie(true);
+  //     window.SetNeededToWin = (count: number) => setNeededToWin(count);
+  //   }
+  // }, []);
 
   const deleteHandler = () => {
     if (!game) return;
 
     if (confirm("Opravdu chcete smazat tuto hru?")) {
       if (game.uuid) deleteGame();
-      localStorage.clear();
+      localStorage.removeItem(game.uuid || "boardData");
       router.push("/games");
     }
   };
@@ -174,8 +174,14 @@ export default function GameBoard({ data }: { data: GameData }) {
 
           <div className="flex flex-col items-center flex-center">
             <div className="flex justify-between text-2xl font-semibold dark:text-white text-black w-full">
-              <p>{game.name}</p>
-              <p>{DifficultyToString(game.difficulty)}</p>
+              <p className="max-w-[50%] text-ellipsis overflow-hidden">
+                {game.name}
+              </p>
+              <p className="max-w-[50%] text-ellipsis overflow-hidden">
+                {game.difficulty !== null
+                  ? DifficultyToString(game.difficulty)
+                  : ""}
+              </p>
             </div>
             <Board board={game.board} handleClick={handleClick} />
             <div className="flex justify-center gap-2 py-2">
@@ -247,18 +253,32 @@ export default function GameBoard({ data }: { data: GameData }) {
       )}
       {winner && (
         <Modal open={true} onClose={() => setWinner(null)}>
-          <ModalHeader>Výhra</ModalHeader>
+          <ModalHeader>{""}</ModalHeader>
           <ModalBody>
-            <p className="text-center text-balance font-medium">
-              Vyhrál hráč {winner}
-            </p>
+            <div className="flex flex-row items-center justify-around text-center text-balance font-extrabold text-6xl">
+              Vyhrály
+              {winner === "X" ? (
+                <Xicon turn={"X"} width={75} height={75} />
+              ) : (
+                <Oicon turn={"O"} width={75} height={75} />
+              )}
+            </div>
           </ModalBody>
           <ModalFooter>
             <button
               onClick={() => setWinner(null)}
-              className="bg-blue-light dark:bg-blue-dark text-white dark:text-black font-semibold rounded-lg py-2 px-6"
+              className="bg-red-light dark:bg-red-dark text-white text-xl font-bold rounded-lg py-2 px-6"
             >
-              ok
+              Zavřít
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem("boardData");
+                router.push("/new-game");
+              }}
+              className="bg-blue-light dark:bg-blue-dark text-white text-xl font-bold rounded-lg py-2 px-6 ml-4"
+            >
+              Nová hra
             </button>
           </ModalFooter>
         </Modal>
@@ -274,9 +294,18 @@ export default function GameBoard({ data }: { data: GameData }) {
           <ModalFooter>
             <button
               onClick={() => setTie(false)}
-              className="bg-blue-light dark:bg-blue-dark text-white dark:text-black font-semibold rounded-lg py-2 px-6"
+              className="bg-red-light dark:bg-red-dark text-white font-semibold rounded-lg py-2 px-6"
             >
-              ok
+              Zavřít
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem("boardData");
+                router.push("/new-game");
+              }}
+              className="bg-blue-light dark:bg-blue-dark text-white text-xl font-bold rounded-lg py-2 px-6 ml-4"
+            >
+              Nová hra
             </button>
           </ModalFooter>
         </Modal>
