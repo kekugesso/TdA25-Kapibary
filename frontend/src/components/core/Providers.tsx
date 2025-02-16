@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ThemeProvider } from "@/components/core/ThemeProvider";
+import { AuthProvider } from "@/components/core/AuthProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 export default function Providers({
@@ -11,14 +12,16 @@ export default function Providers({
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        disableTransitionOnChange
-      >
-        {children}
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
