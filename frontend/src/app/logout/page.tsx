@@ -1,60 +1,31 @@
 "use client";
 
 import { useAuth } from "@/components/core/AuthProvider";
+import { useErrorModal } from "@/components/core/ErrorModalProvider";
 import Loading from "@/components/core/Loading";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  Modal,
-  ModalBody,
-  ModalFooter,
-  ModalHeader,
-} from "@/components/core/Modal";
 
 export default function Logout() {
   const { logout } = useAuth();
   const router = useRouter();
-  const [error, setError] = useState<Error | null>(null);
   const [ignore, setIgnore] = useState(false);
-
-  const handleClose = () => {
-    setError(null);
-    router.back();
-  };
+  const { displayError } = useErrorModal();
 
   useEffect(() => {
     if (ignore) return;
     setIgnore(true);
     const handleLogout = async () => {
       const error = await logout();
-      if (error) setError(error);
-      router.push("/");
+      if (error)
+        displayError(error, {
+          defaultMessage: "An error ocured while logging out",
+          onClose: () => router.push("/"),
+        });
     };
 
     handleLogout();
-  }, [logout, router, ignore]);
+  }, [logout, router, ignore, displayError]);
 
-  return (
-    <>
-      <Loading />
-      {error && (
-        <Modal open={true} onClose={handleClose}>
-          <ModalHeader>Error</ModalHeader>
-          <ModalBody>
-            <p className="text-center text-balance font-medium">
-              {error.message || "An error ocured while logging out"}
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <button
-              onClick={handleClose}
-              className="bg-blue-light dark:bg-blue-dark text-white dark:text-black font-semibold rounded-lg py-2 px-6"
-            >
-              Go back
-            </button>
-          </ModalFooter>
-        </Modal>
-      )}
-    </>
-  );
+  return <Loading />;
 }

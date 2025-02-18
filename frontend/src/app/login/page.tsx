@@ -1,13 +1,8 @@
 "use client";
 
 import { useAuth } from "@/components/core/AuthProvider";
+import { useErrorModal } from "@/components/core/ErrorModalProvider";
 import Loading from "@/components/core/Loading";
-import {
-  Modal,
-  ModalBody,
-  ModalFooter,
-  ModalHeader,
-} from "@/components/core/Modal";
 import { LoginCredentials } from "@/types/auth/login";
 import { RegisterCredentials } from "@/types/auth/register";
 import { useRouter } from "next/navigation";
@@ -16,12 +11,7 @@ import { useState } from "react";
 export default function Login() {
   const { login, register, loading, isLogged } = useAuth();
   const router = useRouter();
-  const [error, setError] = useState<Error | null>(null);
-
-  const handleClose = () => {
-    setError(null);
-    router.back();
-  };
+  const { displayError } = useErrorModal();
 
   const [loginCredentials, setLoginCredentials] = useState<LoginCredentials>({
     login: "",
@@ -38,13 +28,19 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const error = await login(loginCredentials);
-    if (error) setError(error);
+    if (error)
+      displayError(error, {
+        defaultMessage: "An error ocured while logging in",
+      });
   };
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const error = await register(registerCredentials);
-    if (error) setError(error);
+    if (error)
+      displayError(error, {
+        defaultMessage: "An error ocured while registering",
+      });
   };
 
   return (
@@ -121,24 +117,6 @@ export default function Login() {
             </>
           )}
         </div>
-      )}
-      {error && (
-        <Modal open={true} onClose={handleClose}>
-          <ModalHeader>Error</ModalHeader>
-          <ModalBody>
-            <p className="text-center text-balance font-medium">
-              {error.message || "An error ocured while logging out"}
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <button
-              onClick={handleClose}
-              className="bg-blue-light dark:bg-blue-dark text-white dark:text-black font-semibold rounded-lg py-2 px-6"
-            >
-              Go back
-            </button>
-          </ModalFooter>
-        </Modal>
       )}
     </>
   );
