@@ -13,7 +13,7 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from api.consumers import GameConsumer
 
 websocket_urlpatterns = [
-    path("ws/game/<uuid1>", GameConsumer.as_asgi()),
+    path("ws/game/<uuid>", GameConsumer.as_asgi()),
 ]
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tdasebsite.settings")
