@@ -1,17 +1,19 @@
+"use client";
+
 import { useMutation } from "@tanstack/react-query";
 import { LoginCredentials, LoginResponse } from "@/types/auth/login";
 import { RegisterCredentials, RegisterResponse } from "@/types/auth/register";
 
-export const LoginMutation = ({
-  onSuccess,
-  onError,
+export const useLoginMutation = ({
+  onSuccessAction,
+  onErrorAction,
 }: {
-  onSuccess: (data: LoginResponse) => void;
-  onError: (error: Error) => void;
+  onSuccessAction: (data: LoginResponse) => void;
+  onErrorAction: (error: Error) => void;
 }) =>
   useMutation({
-    onSuccess,
-    onError,
+    onSuccess: onSuccessAction,
+    onError: onErrorAction,
     mutationFn: async (
       credentials: LoginCredentials,
     ): Promise<LoginResponse> => {
@@ -33,15 +35,15 @@ export const LoginMutation = ({
   });
 
 export const RegisterMutation = ({
-  onSuccess,
-  onError,
+  onSuccessAction,
+  onErrorAction,
 }: {
-  onSuccess: (data: RegisterResponse) => void;
-  onError: (error: Error) => void;
+  onSuccessAction: (data: RegisterResponse) => void;
+  onErrorAction: (error: Error) => void;
 }) =>
   useMutation({
-    onSuccess,
-    onError,
+    onSuccess: onSuccessAction,
+    onError: onErrorAction,
     mutationFn: async (
       credentials: RegisterCredentials,
     ): Promise<RegisterResponse> => {
@@ -63,15 +65,15 @@ export const RegisterMutation = ({
   });
 
 export const LogoutMutation = ({
-  onSuccess,
-  onError,
+  onSuccessAction,
+  onErrorAction,
 }: {
-  onSuccess: () => void;
-  onError: (error: Error) => void;
+  onSuccessAction: () => void;
+  onErrorAction: (error: Error) => void;
 }) =>
   useMutation({
-    onSuccess,
-    onError,
+    onSuccess: onSuccessAction,
+    onError: onErrorAction,
     mutationFn: async (token: string): Promise<void> => {
       const res = await fetch("/api/logout", {
         method: "POST",

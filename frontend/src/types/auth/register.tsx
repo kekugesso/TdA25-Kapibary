@@ -1,4 +1,4 @@
-import { User } from "@/types/auth/user";
+import { LoginResponse } from "./login";
 
 type RegisterCredentials = {
   email?: string;
@@ -7,6 +7,6 @@ type RegisterCredentials = {
   elo: number;
 };
 
-type RegisterResponse = User;
+type RegisterResponse = LoginResponse;
 
 export type { RegisterCredentials, RegisterResponse };

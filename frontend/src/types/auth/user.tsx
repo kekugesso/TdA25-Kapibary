@@ -3,11 +3,11 @@ type User = {
   elo: number;
   createdAt: string;
   username: string;
+  email: string;
 
-  email?: string;
-  wins?: number;
-  losses?: number;
-  draws?: number;
+  wins: number;
+  losses: number;
+  draws: number;
 };
 
 export type { User };

@@ -7,13 +7,13 @@ import {
   useCallback,
 } from "react";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { User } from "@/types/auth/user";
 import { LoginCredentials, LoginResponse } from "@/types/auth/login";
-import { RegisterCredentials } from "@/types/auth/register";
+import { RegisterCredentials, RegisterResponse } from "@/types/auth/register";
 import {
-  LoginMutation,
+  useLoginMutation,
   RegisterMutation,
   LogoutMutation,
 } from "@/mutations/auth";
@@ -37,103 +37,109 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const login = async (
-    credentials: LoginCredentials,
-  ): Promise<void | Error> => {
-    try {
-      await LoginMutation({
-        onSuccess: (data: LoginResponse) => {
-          setUser(data.user);
-          setCookie("authToken", data.token);
-          setCookie("userUUID", data.user.uuid);
-          router.back();
-        },
-        onError: (error: Error) => {
-          console.error("Login error:", error);
-          return error;
-        },
-      }).mutateAsync(credentials);
-    } catch (error) {
+  const loginMutation = useLoginMutation({
+    onSuccessAction: (data: LoginResponse) => {
+      setUser(data.user);
+      setCookie("authToken", data.token);
+      setCookie("userUUID", data.user.uuid);
+      router.push(`/profile/${data.user.uuid}`);
+    },
+    onErrorAction: (error: Error) => {
       console.error("Login error:", error);
-      return error as Error;
-    }
-  };
+      throw error;
+    },
+  });
+
+  const login = useCallback(
+    async (credentials: LoginCredentials): Promise<void | Error> => {
+      setLoading(true);
+      try {
+        await loginMutation.mutateAsync(credentials);
+      } catch (error) {
+        console.error("Login error:", error);
+        return error as Error;
+      }
+      setLoading(false);
+    },
+    [loginMutation],
+  );
+
+  const registerMutation = RegisterMutation({
+    onSuccessAction: async (data: RegisterResponse) => {
+      setUser(data.user);
+      setCookie("authToken", data.token);
+      setCookie("userUUID", data.user.uuid);
+      router.push(`/profile/${data.user.uuid}`);
+    },
+    onErrorAction: (error: Error) => {
+      console.error("Registration error:", error);
+      throw error;
+    },
+  });
 
   const register = async (
     credentials: RegisterCredentials,
   ): Promise<void | Error> => {
     try {
-      setLoading(true);
-      await RegisterMutation({
-        onSuccess: async () => {
-          await LoginMutation({
-            onSuccess: (data: LoginResponse) => {
-              setUser(data.user);
-              setCookie("authToken", data.token);
-              setCookie("userUUID", data.user.uuid);
-              setLoading(false);
-              router.back();
-            },
-            onError: (error: Error) => {
-              console.error("Login error:", error);
-              return error;
-            },
-          }).mutateAsync({
-            username: credentials.username,
-            password: credentials.password,
-          });
-        },
-        onError: (error: Error) => {
-          console.error("Registration error:", error);
-          return error;
-        },
-      }).mutateAsync(credentials);
+      await registerMutation.mutateAsync(credentials);
     } catch (error) {
       console.error("Registration error:", error);
       return error as Error;
     }
   };
 
-  const check = useCallback(async (): Promise<boolean> => {
-    try {
-      setLoading(true);
-      const res = await fetch("/api/check", {
+  const checkQuery = useQuery({
+    enabled: false,
+    queryKey: ["check"],
+    queryFn: async () =>
+      await fetch("/api/check", {
         method: "GET",
         headers: {
-          Authorization: `Token ${getCookie("authToken")}`,
+          Authorization: `Token ${await getCookie("authToken")}`,
         },
-      });
+      }).then(async (res) => {
+        if (res.ok) {
+          setUser(await res.json());
+          return true;
+        }
+        console.error("Error during token check:", await res.json());
+        deleteCookie("authToken");
+        setUser(null);
+        router.push("/login");
+        return false;
+      }),
+  });
 
-      setLoading(false);
-      if (!res.ok) return false;
-      return true;
+  const check = useCallback(async (): Promise<boolean> => {
+    try {
+      await checkQuery.refetch();
+      return checkQuery.isSuccess;
     } catch (error) {
       console.error("Error during token check:", error);
       return false;
     }
-  }, []);
+  }, [checkQuery]);
+
+  const logoutMutation = LogoutMutation({
+    onSuccessAction: () => {
+      setUser(null);
+      deleteCookie("authToken");
+      queryClient.clear();
+      router.push("/login");
+    },
+    onErrorAction: (error: Error) => {
+      throw error;
+    },
+  });
 
   const logout = async (): Promise<void | Error> => {
     try {
-      setLoading(true);
       const token: string | undefined = await getCookie("authToken");
       if (!token) {
         console.error("No token found");
-        return Error("You are not logged in");
+        throw Error("You are not logged in");
       }
-      await LogoutMutation({
-        onSuccess: () => {
-          setUser(null);
-          deleteCookie("authToken");
-          queryClient.clear();
-          setLoading(false);
-          router.push("/login");
-        },
-        onError: (error: Error) => {
-          console.error("Logout error:", error);
-          return error;
-        },
-      }).mutateAsync(token);
+      await logoutMutation.mutateAsync(token);
     } catch (error) {
       console.error("Logout error:", error);
       return error as Error;
@@ -199,7 +205,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         loading:
           loading ||
           queryClient.isFetching() > 0 ||
-          queryClient.isMutating() > 0,
+          queryClient.isMutating() > 0 ||
+          checkQuery.isLoading ||
+          loginMutation.isPending ||
+          registerMutation.isPending ||
+          logoutMutation.isPending,
         isLogged: !!user,
       }}
     >
