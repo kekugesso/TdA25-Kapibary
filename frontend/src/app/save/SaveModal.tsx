@@ -31,7 +31,7 @@ export default function SaveModal({
   };
 
   return (
-    <Modal open={true} onClose={handleClose}>
+    <Modal open={true} onClose={handleClose} ignoreBackdropClick>
       <form
         onSubmit={(e) => {
           e.preventDefault();

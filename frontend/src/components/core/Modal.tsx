@@ -4,25 +4,34 @@ interface ModalProps {
   children: ReactNode;
   open: boolean;
   onClose: () => void;
+  ignoreBackdropClick?: boolean;
 }
 
-export function Modal({ children, open, onClose }: ModalProps) {
+export function Modal({
+  children,
+  open,
+  onClose,
+  ignoreBackdropClick,
+}: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDialogElement>) => {
-    if (dialogRef.current && event.target === dialogRef.current) {
+    if (
+      dialogRef.current &&
+      event.target === dialogRef.current &&
+      !ignoreBackdropClick
+    )
       onClose();
-    }
   };
 
   return (
     <dialog
       ref={dialogRef}
-      className="fixed inset-0 bg-transparent"
+      className="flex w-[100vw] h-[100dvh] inset-0 bg-transparent z-40 flex-center"
       open={open}
       onClick={handleBackdropClick}
     >
-      <div className="flex flex-col justify-between bg-white dark:bg-black-dark rounded-lg shadow-black shadow-lg w-96 h-72 max-w-lg p-6 relative">
+      <div className="flex flex-col justify-between bg-white dark:bg-black-dark rounded-lg shadow-black shadow-lg w-96 h-72 max-w-lg p-6 relative z-50">
         {children}
         <button
           onClick={onClose}

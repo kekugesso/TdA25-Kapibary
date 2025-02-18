@@ -37,7 +37,7 @@ export default function NewGame() {
     <>
       <Loading />
       {continueGame && (
-        <Modal open onClose={CreateNewGame}>
+        <Modal open onClose={CreateNewGame} ignoreBackdropClick>
           <ModalHeader>
             <p className="text-2xl font-semibold">Pokračovat ve hře</p>
           </ModalHeader>
