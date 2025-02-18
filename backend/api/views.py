@@ -11,7 +11,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import Game, Board, CustomUser, GameStatus
-from .serializers import GameSerializer, BoardSerializer, CustomUserSerializerView, CustomUserSerializerCreate, GameStatusSerializerCreate, GameSerializerMultiplayer
+from .serializers import GameSerializer, BoardSerializer, CustomUserSerializerView, CustomUserSerializerCreate, GameStatusSerializerCreate, GameSerializerMultiplayer, GameStatusForUserSerializerView
 
 class AllUsersView(APIView):
     """
@@ -32,6 +32,14 @@ class AllUsersView(APIView):
         result = []
         for i in range(len(data)):
             result.append(count_results(data[i]["uuid"], data[i]))
+            result[i]["game_status"] = []
+            gamestatus_info = GameStatus.objects.filter(player = data[i]["uuid"])
+            data_gamestatus = GameStatusForUserSerializerView(gamestatus_info, many=True).data
+            for gamestatus in data_gamestatus:
+                uuid_game = gamestatus["game"]
+                gamestatusforgame = GameStatus.objects.filter(game = uuid_game)
+                data_gamestatusforgame = GameStatusForUserSerializerView(gamestatusforgame, many=True).data
+                result[i]["game_status"].append(data_gamestatusforgame)
         return Response(result, status=200)
 
     def post(self, request):
@@ -434,9 +442,11 @@ class Login(APIView):
     def post(self, request):
         data = request.data
         if '@' in data['login']:
-            user = CustomUser.objects.get(email=data['login'])
+            user = CustomUser.objects.filter(email=data['login']).first()
         else:
-            user = CustomUser.objects.get(username=data['login'])
+            user = CustomUser.objects.filter(username=data['login']).first()
+        if user is None:
+            return Response(status=401)
         if not user.check_password(data['password']):
             return Response(status=401)
         token, created = Token.objects.get_or_create(user=user)
@@ -455,6 +465,8 @@ class CheckToken(APIView):
 
 
 class FriedlyGameView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         data = {
             "name": ''.join(random.choices(string.ascii_letters, k=10)),
@@ -467,7 +479,7 @@ class FriedlyGameView(APIView):
         else:
             return Response(serializer.errors, status=400)
 
-        user = CustomUser.objects.get(uuid=request.data["uuid"])
+        user = CustomUser.objects.get(uuid=request.user.uuid)
         gamestatus_data = {
             "player": user.uuid,
             "result": "unknown",
@@ -497,10 +509,9 @@ class FriedlyGameView(APIView):
 
     def put(self, request):
         uuid_game = request.data["game"]
-        uuid_user = request.data["user"]
         data = request.data
         game = Game.objects.get(uuid=uuid_game)
-        user = CustomUser.objects.get(uuid=uuid_user)
+        user = CustomUser.objects.get(uuid=request.user.uuid)
         gamestatus_data = {
             "player": user.uuid,
             "result": "unknown",
