@@ -26,6 +26,12 @@ class CustomUser(AbstractUser):
     uuid = models.UUIDField(
         default=uuid.uuid4, editable=False, primary_key=True)
     elo = models.IntegerField(null=False)
+    avatar = models.ImageField(
+        upload_to="avatars/",
+        max_length=255,  # Максимальная длина имени файла
+        blank=False,  # Запрещаем загрузку пустых файлов
+        default="avatars/default.svg"
+    )
 
     def __repr__(self):
         """returns user uuid
@@ -67,6 +73,13 @@ class Symbol(models.TextChoices):
     O = "O"
 
 
+class GameType(models.TextChoices):
+    """Possible game types"""
+    LOCAL = "local"
+    FRIENDLY = "friendly"
+    RATING = "rating"
+
+
 class Game(models.Model):
     """Game model
 
@@ -90,6 +103,8 @@ class Game(models.Model):
                                   default=Difficulty.BEGINNER, null=False)
     gameState = models.CharField(choices=GameState.choices, max_length=20,
                                  default=GameState.UNKNOWN, null=False)
+    gameType = models.CharField(choices=GameType.choices, max_length=20,
+                                default=GameType.LOCAL, null=False)
 
     def __repr__(self):
         """returns game uuid
@@ -155,7 +170,7 @@ class GameStatus(models.Model):
                               default=GameResult.UNKNOWN, null=False)
     symbol = models.CharField(choices=Symbol.choices, max_length=1, null=False)
     createdAt = models.DateTimeField(null=False, auto_now_add=True)
-    elodifference = models.IntegerField(null=False)
+    elodifference = models.IntegerField(null=True)
 
     def __repr__(self):
         """

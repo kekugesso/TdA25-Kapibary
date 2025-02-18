@@ -1,15 +1,17 @@
 import uuid
+import random
+import string
 from datetime import timedelta
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import Game, Board, CustomUser, GameStatus
-from .serializers import GameSerializer, BoardSerializer, CustomUserSerializerView, CustomUserSerializerCreate, GameStatusSerializer
-
+from .serializers import GameSerializer, BoardSerializer, CustomUserSerializerView, CustomUserSerializerCreate, GameStatusSerializerCreate, GameSerializerMultiplayer
 
 class AllUsersView(APIView):
     """
@@ -39,13 +41,17 @@ class AllUsersView(APIView):
             201: JSON with the created user
             400: JSON with bad data
         """
-        serializer = CustomUserSerializerCreate(data=request.data)
+        data = request.data
+        data["is_superuser"] = False
+        serializer = CustomUserSerializerCreate(data=data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
         user = CustomUser.objects.create_user(**serializer.data)
         serializer = CustomUserSerializerView(user)
         result = count_results(user.uuid, serializer.data)
-        return Response(result, status=201)
+        token, created = Token.objects.get_or_create(user=user)
+        resultwithtoken = {"token": token.key, "user": result}
+        return Response(resultwithtoken, status=201)
 
 
 class UserView(APIView):
@@ -118,7 +124,7 @@ class AllGamesView(APIView):
         returns:
             200: JSON with all games
         """
-        games = Game.objects.all()
+        games = Game.objects.filter(gameType="local")
         serializer = GameSerializer(games, many=True)
         result = []
         for game in serializer.data:
@@ -431,7 +437,10 @@ class Login(APIView):
 
     def post(self, request):
         data = request.data
-        user = get_object_or_404(CustomUser, username=data['username'])
+        if '@' in data['login']:
+            user = CustomUser.objects.get(email=data['login'])
+        else:
+            user = CustomUser.objects.get(username=data['login'])
         if not user.check_password(data['password']):
             return Response(status=401)
         token, created = Token.objects.get_or_create(user=user)
@@ -445,12 +454,84 @@ class CheckToken(APIView):
     def get(self, request):
         user = CustomUser.objects.get(uuid=request.user.uuid)
         serializer = CustomUserSerializerView(user)
-        return Response(serializer.data, status=200)
+        result = count_results(user.uuid, serializer.data)
+        return Response(result, status=200)
+
+
+class FriedlyGameView(APIView):
+    def post(self, request):
+        data = {
+            "name": ''.join(random.choices(string.ascii_letters, k=10)),
+            "gameType": "friendly",
+        }
+
+        serializer = GameSerializer(data=data)
+        if serializer.is_valid():
+            game_instance = serializer.save()  # Save and keep reference
+        else:
+            return Response(serializer.errors, status=400)
+
+        user = CustomUser.objects.get(uuid=request.data["uuid"])
+        gamestatus_data = {
+            "player": user.uuid,
+            "result": "unknown",
+            "symbol": request.data["symbol"],
+            "game": game_instance.uuid,  # Use instance instead of raw data
+            "elo": user.elo
+        }
+
+        serializer_gamestatus = GameStatusSerializerCreate(data=gamestatus_data)
+        if serializer_gamestatus.is_valid():
+            serializer_gamestatus.save()
+        else:
+            game_instance.delete()
+            return Response(serializer_gamestatus.errors, status=400)
+
+        # Retrieve the saved object correctly
+        serialized_game = GameSerializerMultiplayer(game_instance)
+        data = serialized_game.data
+
+        # Process board data
+        matrix = [["" for _ in range(15)] for _ in range(15)]
+        for symbol in data.get("board", []):
+            matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
+        data["board"] = matrix
+
+        return Response(data, status=200)
+
+    def put(self, request):
+        uuid_game = request.data["game"]
+        uuid_user = request.data["user"]
+        data = request.data
+        game = Game.objects.get(uuid=uuid_game)
+        user = CustomUser.objects.get(uuid=uuid_user)
+        gamestatus_data = {
+            "player": user.uuid,
+            "result": "unknown",
+            "symbol": request.data["symbol"],
+            "game": game.uuid,  # Use instance instead of raw data
+            "elo": user.elo
+        }
+        serializer_gamestatus = GameStatusSerializerCreate(data=gamestatus_data)
+        if serializer_gamestatus.is_valid():
+            serializer_gamestatus.save()
+        else:
+            return Response(serializer_gamestatus.errors, status=400)
+        serialized_game = GameSerializerMultiplayer(game)
+        data = serialized_game.data
+
+        # Process board data
+        matrix = [["" for _ in range(15)] for _ in range(15)]
+        for symbol in data.get("board", []):
+            matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
+        data["board"] = matrix
+
+        return Response(data, status=200)
 
 
 def count_results(uuid, data):
     result = data
-    games = GameStatus.objects.all().filter(player_id=uuid)
+    games = GameStatus.objects.filter(player_id=uuid)
     count_win = 0
     count_lose = 0
     count_draw = 0
