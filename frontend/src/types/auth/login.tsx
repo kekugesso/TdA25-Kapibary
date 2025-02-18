@@ -1,7 +1,7 @@
 import { User } from "@/types/auth/user";
 
 type LoginCredentials = {
-  username: string;
+  login: string;
   password: string;
 };
 

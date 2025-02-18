@@ -24,7 +24,7 @@ export default function Login() {
   };
 
   const [loginCredentials, setLoginCredentials] = useState<LoginCredentials>({
-    username: "",
+    login: "",
     password: "",
   });
   const [registerCredentials, setRegisterCredentials] =
@@ -56,12 +56,12 @@ export default function Login() {
           <form onSubmit={handleLogin}>
             <input
               type="text"
-              placeholder="Username"
-              value={loginCredentials.username}
+              placeholder="Username or Email"
+              value={loginCredentials.login}
               onChange={(e) =>
                 setLoginCredentials({
                   ...loginCredentials,
-                  username: e.target.value,
+                  login: e.target.value,
                 })
               }
             />
