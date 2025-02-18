@@ -13,7 +13,7 @@ import { User } from "@/types/auth/user";
 import { LoginCredentials, LoginResponse } from "@/types/auth/login";
 import { RegisterCredentials, RegisterResponse } from "@/types/auth/register";
 import {
-  useLoginMutation,
+  LoginMutation,
   RegisterMutation,
   LogoutMutation,
 } from "@/mutations/auth";
@@ -37,11 +37,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const loginMutation = useLoginMutation({
+  const loginMutation = LoginMutation({
     onSuccessAction: (data: LoginResponse) => {
       setUser(data.user);
       setCookie("authToken", data.token);
-      setCookie("userUUID", data.user.uuid);
       router.push(`/profile/${data.user.uuid}`);
     },
     onErrorAction: (error: Error) => {
@@ -52,14 +51,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = useCallback(
     async (credentials: LoginCredentials): Promise<void | Error> => {
-      setLoading(true);
       try {
         await loginMutation.mutateAsync(credentials);
       } catch (error) {
         console.error("Login error:", error);
         return error as Error;
       }
-      setLoading(false);
     },
     [loginMutation],
   );
@@ -68,7 +65,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     onSuccessAction: async (data: RegisterResponse) => {
       setUser(data.user);
       setCookie("authToken", data.token);
-      setCookie("userUUID", data.user.uuid);
       router.push(`/profile/${data.user.uuid}`);
     },
     onErrorAction: (error: Error) => {
@@ -90,6 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const checkQuery = useQuery({
     enabled: false,
+    retry: false,
     queryKey: ["check"],
     queryFn: async () =>
       await fetch("/api/check", {
@@ -98,33 +95,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           Authorization: `Token ${await getCookie("authToken")}`,
         },
       }).then(async (res) => {
-        if (res.ok) {
-          setUser(await res.json());
-          return true;
-        }
-        console.error("Error during token check:", await res.json());
+        if (res.status == 200) return (await res.json()) as User;
         deleteCookie("authToken");
         setUser(null);
         router.push("/login");
-        return false;
+        throw new Error(await res.json());
       }),
   });
 
   const check = useCallback(async (): Promise<boolean> => {
-    try {
-      await checkQuery.refetch();
-      return checkQuery.isSuccess;
-    } catch (error) {
-      console.error("Error during token check:", error);
-      return false;
-    }
+    const { data } = await checkQuery.refetch();
+    if (data) setUser(data);
+    return !!data;
   }, [checkQuery]);
 
   const logoutMutation = LogoutMutation({
     onSuccessAction: () => {
       setUser(null);
       deleteCookie("authToken");
-      queryClient.clear();
       router.push("/login");
     },
     onErrorAction: (error: Error) => {
@@ -151,48 +139,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (await getCookie("authToken")) {
         const initializeUser = async () => {
           if (await check()) {
-            const userUUID = getCookie("userUUID") as string | undefined;
-
-            if (!userUUID) {
-              deleteCookie("authToken");
-              setUser(null);
-              router.push("/login");
-              return;
-            }
-
-            try {
-              const user = await queryClient.ensureQueryData({
-                queryKey: ["user", userUUID],
-                queryFn: async (): Promise<User> => {
-                  const res = await fetch(`/api/users/${userUUID}`);
-                  if (!res.ok) {
-                    const errorData = await res.json();
-                    throw new Error(
-                      errorData.message || "Failed to fetch user data",
-                    );
-                  }
-                  return res.json();
-                },
-              });
-
-              setUser(user);
-            } catch (error) {
-              console.error("Error fetching user:", error);
-              deleteCookie("authToken");
-              setUser(null);
-              router.push("/login");
-            }
+            const user = checkQuery.data;
+            if (user) setUser(user);
+            setLoading(false);
           } else {
             deleteCookie("authToken");
             setUser(null);
             router.push("/login");
           }
         };
+
         initializeUser();
       } else setLoading(false);
     };
+
+    const timer = setTimeout(async () => {
+      await check();
+    }, 60000);
+
     initializeAuth();
-  }, [check, router, queryClient]);
+    return () => clearTimeout(timer);
+  }, [check, checkQuery, checkQuery.data, router, queryClient, user]);
 
   return (
     <AuthContext.Provider
@@ -204,8 +171,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         check,
         loading:
           loading ||
-          queryClient.isFetching() > 0 ||
-          queryClient.isMutating() > 0 ||
           checkQuery.isLoading ||
           loginMutation.isPending ||
           registerMutation.isPending ||

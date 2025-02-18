@@ -1,10 +1,11 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { LoginCredentials, LoginResponse } from "@/types/auth/login";
 import { RegisterCredentials, RegisterResponse } from "@/types/auth/register";
+import { User } from "@/types/auth/user";
 
-export const useLoginMutation = ({
+export const LoginMutation = ({
   onSuccessAction,
   onErrorAction,
 }: {
@@ -47,7 +48,7 @@ export const RegisterMutation = ({
     mutationFn: async (
       credentials: RegisterCredentials,
     ): Promise<RegisterResponse> => {
-      const res = await fetch("/api/auth/register", {
+      const res = await fetch("/api/users", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -86,5 +87,18 @@ export const LogoutMutation = ({
         const errorData = await res.json();
         throw new Error(errorData.message || "Logout failed");
       }
+    },
+  });
+
+export const UserQuery = (uuid: string) =>
+  useQuery({
+    queryKey: ["user", uuid],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${uuid}`);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to fetch user data");
+      }
+      return (await res.json()) as User;
     },
   });
