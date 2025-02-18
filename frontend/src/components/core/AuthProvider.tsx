@@ -155,13 +155,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else setLoading(false);
     };
 
-    const timer = setTimeout(async () => {
-      setLoading(true);
-      initializeAuth();
-    }, 60000);
-
     initializeAuth();
-    return () => clearTimeout(timer);
   }, [check, checkQuery, user, checkQuery.data, router, loading, path]);
 
   return (
