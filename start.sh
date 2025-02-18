@@ -27,6 +27,7 @@ elif [ "$1" = "setup-dev" ]; then
   pip install -r requirements.txt
 
   # create db
+  rm backend/db.sqlite3
   touch backend/db.sqlite3
   python3 backend/manage.py makemigrations
   python3 backend/manage.py migrate
