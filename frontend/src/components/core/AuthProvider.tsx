@@ -1,3 +1,5 @@
+"use client";
+
 import {
   createContext,
   useContext,
@@ -6,8 +8,8 @@ import {
   ReactNode,
   useCallback,
 } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 
 import { User } from "@/types/auth/user";
 import { LoginCredentials, LoginResponse } from "@/types/auth/login";
@@ -35,7 +37,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const path = usePathname();
 
   const loginMutation = LoginMutation({
     onSuccessAction: (data: LoginResponse) => {
@@ -149,17 +151,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         };
 
-        initializeUser();
+        if (loading) initializeUser();
       } else setLoading(false);
     };
 
     const timer = setTimeout(async () => {
-      await check();
+      setLoading(true);
+      initializeAuth();
     }, 60000);
 
     initializeAuth();
     return () => clearTimeout(timer);
-  }, [check, checkQuery, checkQuery.data, router, queryClient, user]);
+  }, [check, checkQuery, user, checkQuery.data, router, loading, path]);
 
   return (
     <AuthContext.Provider
