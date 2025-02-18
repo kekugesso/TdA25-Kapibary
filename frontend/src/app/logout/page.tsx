@@ -15,6 +15,7 @@ export default function Logout() {
   const { logout } = useAuth();
   const router = useRouter();
   const [error, setError] = useState<Error | null>(null);
+  const [ignore, setIgnore] = useState(false);
 
   const handleClose = () => {
     setError(null);
@@ -22,6 +23,8 @@ export default function Logout() {
   };
 
   useEffect(() => {
+    if (ignore) return;
+    setIgnore(true);
     const handleLogout = async () => {
       const error = await logout();
       if (error) setError(error);
@@ -29,7 +32,7 @@ export default function Logout() {
     };
 
     handleLogout();
-  }, [logout, router]);
+  }, [logout, router, ignore]);
 
   return (
     <>
