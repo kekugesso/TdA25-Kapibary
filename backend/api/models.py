@@ -27,8 +27,8 @@ class CustomUser(AbstractUser):
     elo = models.IntegerField(null=False)
     avatar = models.ImageField(
         upload_to="avatars/",
-        max_length=255,  # Максимальная длина имени файла
-        blank=False,  # Запрещаем загрузку пустых файлов
+        max_length=255,
+        blank=False,
         default="avatars/default.svg"
     )
     is_banned = models.BooleanField(default=False)
