@@ -32,6 +32,7 @@ class CustomUser(AbstractUser):
         blank=False,  # Запрещаем загрузку пустых файлов
         default="avatars/default.svg"
     )
+    is_banned = models.BooleanField(default=False)
 
     def __repr__(self):
         """returns user uuid
