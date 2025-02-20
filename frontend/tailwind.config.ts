@@ -36,6 +36,9 @@ export default {
       transitionProperty: {
         width: "width",
       },
+      height: {
+        page: "var(--page-height)",
+      },
     },
   },
   plugins: [require("tailwindcss-animated")],
