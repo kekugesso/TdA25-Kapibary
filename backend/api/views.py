@@ -460,7 +460,7 @@ class Login(APIView):
             return Response(status=401)
         token, created = Token.objects.get_or_create(user=user)
         serializer = CustomUserSerializerView(user)
-        return Response({'token': token.key, "user": serializer.data}, status=200)
+        return Response({'token': token.key, "user": count_results(user.uuid, serializer.data)}, status=200)
 
 
 class CheckToken(APIView):
