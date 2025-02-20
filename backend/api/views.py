@@ -3,8 +3,8 @@ import random
 import string
 from datetime import timedelta
 from django.utils import timezone
-from django.shortcuts import get_object_or_404
-from django.conf import settings
+from django.forms.models import model_to_dict
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
@@ -13,6 +13,13 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import Game, Board, CustomUser, GameStatus
 from .serializers import GameSerializer, BoardSerializer, CustomUserSerializerView, CustomUserSerializerCreate, GameStatusSerializerCreate, GameSerializerMultiplayer, GameStatusForUserSerializerView
 
+
+class CustomPagination(PageNumberPagination):
+    page_size = 100  # Количество элементов на странице
+    page_size_query_param = 'page_size'  # Позволяет клиенту задавать размер страницы
+    max_page_size = 100  # Максимальный размер страницы
+
+
 class AllUsersView(APIView):
     """
     class for retrieving all users
@@ -20,6 +27,8 @@ class AllUsersView(APIView):
     methods:
         get: retrieves all users
     """
+    pagination_class = CustomPagination
+
     def get(self, request):
         """
         retrieves all users
@@ -27,20 +36,13 @@ class AllUsersView(APIView):
             200: JSON with all users
         """
         users = CustomUser.objects.all()
-        serializer = CustomUserSerializerView(users, many=True)
-        data = serializer.data
-        result = []
-        for i in range(len(data)):
-            result.append(count_results(data[i]["uuid"], data[i]))
-            result[i]["game_status"] = []
-            gamestatus_info = GameStatus.objects.filter(player = data[i]["uuid"])
-            data_gamestatus = GameStatusForUserSerializerView(gamestatus_info, many=True).data
-            for gamestatus in data_gamestatus:
-                uuid_game = gamestatus["game"]
-                gamestatusforgame = GameStatus.objects.filter(game = uuid_game)
-                data_gamestatusforgame = GameStatusForUserSerializerView(gamestatusforgame, many=True).data
-                result[i]["game_status"].append(data_gamestatusforgame)
-        return Response(result, status=200)
+        paginator = self.pagination_class()
+        paginated_users = paginator.paginate_queryset(users, request)
+
+        serializer = CustomUserSerializerView(paginated_users, many=True)
+        result = [count_results(user["uuid"], user) for user in serializer.data]
+
+        return paginator.get_paginated_response(result)
 
     def post(self, request):
         """
@@ -82,7 +84,8 @@ class UserView(APIView):
             return Response({"message": "Neexistujicí uživatel."}, status=404)
         serializer = CustomUserSerializerView(user)
         result = count_results(user.uuid, serializer.data)
-        return Response(result)
+        return Response(result, status=200)
+    
     def delete(self, request, uuid1):
         """
         deletes one user
@@ -445,6 +448,8 @@ class Login(APIView):
 
     def post(self, request):
         data = request.data
+        if data['login'] is None or data['password'] is None:
+            return Response({"message": "Missing login or password"}, status=400)
         if '@' in data['login']:
             user = CustomUser.objects.filter(email=data['login']).first()
         else:
@@ -540,6 +545,24 @@ class FriedlyGameView(APIView):
         return Response(data, status=200)
 
 
+class GamesHistoryView(APIView):
+    def get(self, request, uuid):
+        game_statuses = GameStatus.objects.filter(player=uuid)
+        data = []
+        for game_status in game_statuses:
+            games = GameStatus.objects.filter(game=game_status.game)
+            serializer = GameStatusForUserSerializerView(games, many=True)
+            data.append(serializer.data)
+        result = []
+        for game in data:
+            hello = {}
+            hello["player1"] = game[0]
+            hello["player2"] = game[1]
+            result.append(hello)
+        result = get_game_history(result, uuid)
+        return Response(result, status=200)
+
+
 def count_results(uuid, data):
     result = data
     games = GameStatus.objects.filter(player_id=uuid)
@@ -557,3 +580,31 @@ def count_results(uuid, data):
     result["losses"] = count_lose
     result["draws"] = count_draw
     return result
+
+def get_game_history(data, uuid_player):
+    result = []
+    for game in data:
+        hello = {}
+        opponent = {}
+        if(game["player1"]["player"]["uuid"] == uuid_player):
+            hello["elo"] = game["player1"]["elo"]
+            hello["symbol"] = game["player1"]["symbol"]
+            hello["createdAt"] = game["player1"]["createdAt"]
+            hello["result"] = game["player1"]["result"]
+            hello["elo_change"] = game["player1"]["elodifference"]
+            opponent["username"] = game["player2"]["player"]["username"]
+            opponent["avatar"] = game["player2"]["player"]["avatar"]
+            opponent["elo"] = game["player2"]["elo"]
+            hello["opponent"] = opponent
+        else:
+            hello["elo"] = game["player2"]["elo"]
+            hello["symbol"] = game["player2"]["symbol"]
+            hello["createdAt"] = game["player2"]["createdAt"]
+            hello["result"] = game["player2"]["result"]
+            hello["elo_change"] = game["player2"]["elodifference"]
+            opponent["username"] = game["player1"]["player"]["username"]
+            opponent["avatar"] = game["player1"]["player"]["avatar"]
+            opponent["elo"] = game["player1"]["elo"]
+            hello["opponent"] = opponent
+        result.append(hello)
+    return(result)
