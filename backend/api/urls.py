@@ -12,6 +12,6 @@ urlpatterns = [
     path('api/v1/login', views.Login.as_view()),
     path('api/v1/logout', views.Logout.as_view()),
     path('api/v1/check', views.CheckToken.as_view()),
-    path('api/v1/friendly', views.FriedlyGameView.as_view()),
+    path('api/v1/freeplay', views.FreeplayGameView.as_view()),
     path('api/v1/users/<uuid>/game_history', views.GamesHistoryView.as_view()),
 ]

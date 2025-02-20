@@ -1,3 +1,5 @@
+import random
+import string
 from copy import deepcopy
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async
@@ -9,16 +11,22 @@ import json
 
 class GameConsumer(AsyncWebsocketConsumer):
     tah = "X"
+    anonymous = ""
+    active_users = set()
 
     async def connect(self):
         uuid = self.scope["url_route"]["kwargs"]["uuid"]
+        self.active_users.add(self)
         await self.channel_layer.group_add(f"game_{uuid}", self.channel_name)
         await self.accept()
-        data = await self.get_game(uuid)
+        game = await self.get_game(uuid)
+        data = GameSerializerMultiplayer(game).data
         matrix = [["" for _ in range(15)] for _ in range(15)]
         for symbol in data.get("board", []):
             matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
         data["board"] = matrix
+        if(game.anonymousToken is not None):
+            self.anonymous = game.anonymousToken
         await self.send(text_data=json.dumps(data))
 
     async def disconnect(self, close_code):
@@ -28,11 +36,15 @@ class GameConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         uuid = self.scope["url_route"]["kwargs"]["uuid"]
         data = json.loads(text_data)
-        uuid_player = await self.get_user_from_token()
+        token = await self.get_token()
+        control_token = await self.is_valid_token(token)
+        if control_token:
+            uuid_player = await self.get_token(token)
+        else:
+            uuid_player = self.anonymous
         control = await self.control_player(uuid, uuid_player)
-        print(control)
         if control:
-            data["symbol"] = await self.get_symbol(uuid, uuid_player)
+            data["symbol"] = await self.tah
             if (data["symbol"] == self.tah):
                 if self.tah == "X":
                     self.tah = "O"
@@ -63,8 +75,7 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     @sync_to_async
     def get_game(self, uuid):
-        game = Game.objects.get(uuid=uuid)
-        return GameSerializerMultiplayer(game).data
+        return Game.objects.get(uuid=uuid)
 
     @sync_to_async
     def get_symbol(self, uuid_game, uuid_user):
@@ -79,7 +90,10 @@ class GameConsumer(AsyncWebsocketConsumer):
         players = []
         for gamestatus in serializer.data:
             players.append(gamestatus["player"]["uuid"])
-        return uuid_user in players
+        if(len(players) < 2):
+            return uuid_user in players or uuid_user == self.anonymous
+        else:
+            return uuid_user in players
     
     async def get_user_from_token(self):
         headers = dict(deepcopy(self.scope["headers"]))
@@ -88,12 +102,11 @@ class GameConsumer(AsyncWebsocketConsumer):
         if not auth_header.startswith("Token "):
             return None
 
-        token_key = auth_header.split(" ")[1]
+        return auth_header.split(" ")[1]
 
-        return await self.get_user_by_token(token_key)
 
     @sync_to_async
-    def get_user_by_token(self, token_key):
+    def get_token(self, token_key):
         try:
             token = Token.objects.get(key=token_key)
             return str(token.user.uuid)
@@ -142,3 +155,13 @@ class GameConsumer(AsyncWebsocketConsumer):
             matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
         data = matrix
         return data
+    async def is_friendly(self, game_type):
+        return game_type == "friendly"
+    
+    @sync_to_async
+    def is_valid_token(self, token):
+        try:
+            Token.objects.get(key=token)
+            return True
+        except Token.DoesNotExist:
+            return False

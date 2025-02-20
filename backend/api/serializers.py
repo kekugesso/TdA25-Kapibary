@@ -48,7 +48,7 @@ class CustomUserSerializerViewGameStatus(serializers.ModelSerializer):
             [type]: [description]
         """
         model = CustomUser
-        fields = ['uuid', 'username', 'avatar']
+        fields = ['uuid', 'username']
 
 
 class BoardSerializer(serializers.ModelSerializer):
@@ -121,14 +121,5 @@ class GameSerializerMultiplayer(serializers.ModelSerializer):
             [type]: [description]
         """
         model = Game
-        fields = ['board', 'uuid', 'gameType', 'game_status']
+        fields = ['board', 'uuid', 'gameType', 'game_status', 'gameCode']
 
-
-class GameHistorySerializer(serializers.Serializer):
-    opponent = CustomUserSerializerViewGameStatus(read_only=True)
-    #game_uuid = serializers.CharField(source='uuid', read_only=True)
-    symbol = serializers.CharField(read_only=True)
-    elo = serializers.IntegerField(read_only=True)
-    result = serializers.CharField(read_only=True)
-    elodifference = serializers.IntegerField(read_only=True)
-    createdAt = serializers.DateTimeField(read_only=True)

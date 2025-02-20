@@ -469,13 +469,29 @@ class CheckToken(APIView):
         return Response(result, status=200)
 
 
-class FriedlyGameView(APIView):
-    permission_classes = [IsAuthenticated]
-
+class FreeplayGameView(APIView):
+    def get(self, request):
+        data = request.data
+        if(request.user.is_authenticated == False):
+            characters = string.ascii_lowercase + string.digits
+            authtoken = ''.join(random.choices(characters, k=40))
+            data["anonymousToken"] = authtoken
+            serializer = GameSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save()
+        game = Game.objects.filter(gameCode=data["code"]).last()
+        if game is None:
+            return Response({"message": "Game not found"}, status=404)
+        serializer = GameSerializerMultiplayer(game)
+        result = serializer.data
+        result["authtoken"] = game.anonymousToken
+        return Response(result, status=200)
+        
     def post(self, request):
         data = {
             "name": ''.join(random.choices(string.ascii_letters, k=10)),
             "gameType": "friendly",
+            "gameCode": ''.join(random.choices(string.digits, k=6)),
         }
 
         serializer = GameSerializer(data=data)
@@ -512,34 +528,6 @@ class FriedlyGameView(APIView):
 
         return Response(data, status=200)
 
-    def put(self, request):
-        uuid_game = request.data["game"]
-        data = request.data
-        game = Game.objects.get(uuid=uuid_game)
-        user = CustomUser.objects.get(uuid=request.user.uuid)
-        gamestatus_data = {
-            "player": user.uuid,
-            "result": "unknown",
-            "symbol": request.data["symbol"],
-            "game": game.uuid,  # Use instance instead of raw data
-            "elo": user.elo
-        }
-        serializer_gamestatus = GameStatusSerializerCreate(data=gamestatus_data)
-        if serializer_gamestatus.is_valid():
-            serializer_gamestatus.save()
-        else:
-            return Response(serializer_gamestatus.errors, status=400)
-        serialized_game = GameSerializerMultiplayer(game)
-        data = serialized_game.data
-
-        # Process board data
-        matrix = [["" for _ in range(15)] for _ in range(15)]
-        for symbol in data.get("board", []):
-            matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
-        data["board"] = matrix
-
-        return Response(data, status=200)
-
 
 class GamesHistoryView(APIView):
     def get(self, request, uuid):
@@ -552,8 +540,11 @@ class GamesHistoryView(APIView):
         result = []
         for game in data:
             hello = {}
-            hello["player1"] = game[0]
-            hello["player2"] = game[1]
+            if(len(game) < 2):
+                hello["player1"] = game[0]
+            else:
+                hello["player1"] = game[0]
+                hello["player2"] = game[1]
             result.append(hello)
         result = get_game_history(result, uuid)
         return Response(result, status=200)
@@ -577,30 +568,38 @@ def count_results(uuid, data):
     result["draws"] = count_draw
     return result
 
-def get_game_history(data, uuid_player):
+def  get_game_history(data, uuid_player):
     result = []
     for game in data:
         hello = {}
         opponent = {}
-        if(game["player1"]["player"]["uuid"] == uuid_player):
+        if game.get("player2") is None:
             hello["elo"] = game["player1"]["elo"]
             hello["symbol"] = game["player1"]["symbol"]
             hello["createdAt"] = game["player1"]["createdAt"]
             hello["result"] = game["player1"]["result"]
             hello["elo_change"] = game["player1"]["elodifference"]
-            opponent["username"] = game["player2"]["player"]["username"]
-            opponent["avatar"] = game["player2"]["player"]["avatar"]
-            opponent["elo"] = game["player2"]["elo"]
+            opponent["username"] = "Anonymous"
+            opponent["elo"] = 0
             hello["opponent"] = opponent
         else:
-            hello["elo"] = game["player2"]["elo"]
-            hello["symbol"] = game["player2"]["symbol"]
-            hello["createdAt"] = game["player2"]["createdAt"]
-            hello["result"] = game["player2"]["result"]
-            hello["elo_change"] = game["player2"]["elodifference"]
-            opponent["username"] = game["player1"]["player"]["username"]
-            opponent["avatar"] = game["player1"]["player"]["avatar"]
-            opponent["elo"] = game["player1"]["elo"]
-            hello["opponent"] = opponent
+            if(game["player1"]["player"]["uuid"] == uuid_player):
+                hello["elo"] = game["player1"]["elo"]
+                hello["symbol"] = game["player1"]["symbol"]
+                hello["createdAt"] = game["player1"]["createdAt"]
+                hello["result"] = game["player1"]["result"]
+                hello["elo_change"] = game["player1"]["elodifference"]
+                opponent["username"] = game["player2"]["player"]["username"]
+                opponent["elo"] = game["player2"]["elo"]
+                hello["opponent"] = opponent
+            else:
+                hello["elo"] = game["player2"]["elo"]
+                hello["symbol"] = game["player2"]["symbol"]
+                hello["createdAt"] = game["player2"]["createdAt"]
+                hello["result"] = game["player2"]["result"]
+                hello["elo_change"] = game["player2"]["elodifference"]
+                opponent["username"] = game["player1"]["player"]["username"]
+                opponent["elo"] = game["player1"]["elo"]
+                hello["opponent"] = opponent
         result.append(hello)
     return(result)
