@@ -2,7 +2,11 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { LoginCredentials, LoginResponse } from "@/types/auth/login";
-import { RegisterCredentials, RegisterResponse } from "@/types/auth/register";
+import {
+  RegisterCredentials,
+  RegisterResponse,
+  RegistrtionError,
+} from "@/types/auth/register";
 import { User } from "@/types/auth/user";
 
 export const LoginMutation = ({
@@ -26,7 +30,13 @@ export const LoginMutation = ({
         body: JSON.stringify(credentials),
       });
 
-      if (!res.ok) {
+      if (res.status === 401) {
+        const error = new Error("Špatné přihlašovací údaje");
+        error.name = "InvalidCredentials";
+        throw error;
+      }
+
+      if (res.status != 200) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Login failed");
       }
@@ -56,7 +66,9 @@ export const RegisterMutation = ({
         body: JSON.stringify(credentials),
       });
 
-      if (!res.ok) {
+      if (res.status === 400) throw (await res.json()) as RegistrtionError;
+
+      if (res.status != 200) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Register failed");
       }

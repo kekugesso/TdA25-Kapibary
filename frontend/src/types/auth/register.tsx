@@ -9,4 +9,10 @@ type RegisterCredentials = {
 
 type RegisterResponse = LoginResponse;
 
-export type { RegisterCredentials, RegisterResponse };
+type RegistrtionError = {
+  username?: string[];
+  email?: string[];
+  password?: string[];
+};
+
+export type { RegisterCredentials, RegisterResponse, RegistrtionError };

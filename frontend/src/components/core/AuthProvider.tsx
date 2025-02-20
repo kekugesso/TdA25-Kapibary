@@ -13,7 +13,11 @@ import { useQuery } from "@tanstack/react-query";
 
 import { User } from "@/types/auth/user";
 import { LoginCredentials, LoginResponse } from "@/types/auth/login";
-import { RegisterCredentials, RegisterResponse } from "@/types/auth/register";
+import {
+  RegisterCredentials,
+  RegisterResponse,
+  RegistrtionError,
+} from "@/types/auth/register";
 import {
   LoginMutation,
   RegisterMutation,
@@ -25,7 +29,9 @@ export interface AuthContextType {
   user: User | null;
   isLogged: boolean;
   login: (credentials: LoginCredentials) => Promise<void | Error>;
-  register: (credentials: RegisterCredentials) => Promise<void | Error>;
+  register: (
+    credentials: RegisterCredentials,
+  ) => Promise<void | RegistrtionError | Error>;
   check: () => Promise<boolean>;
   logout: () => Promise<void | Error>;
   loading: boolean;
@@ -39,14 +45,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const path = usePathname();
 
+  const loginSucess = async (data: LoginResponse | RegisterResponse) => {
+    setUser(data.user);
+    await setCookie("authToken", data.token);
+    router.push(`/profile/${data.user.uuid}`);
+  };
+
   const loginMutation = LoginMutation({
-    onSuccessAction: (data: LoginResponse) => {
-      setUser(data.user);
-      setCookie("authToken", data.token);
-      router.push(`/profile/${data.user.uuid}`);
-    },
+    onSuccessAction: loginSucess,
     onErrorAction: (error: Error) => {
-      console.error("Login error:", error);
       throw error;
     },
   });
@@ -56,33 +63,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         await loginMutation.mutateAsync(credentials);
       } catch (error) {
+        const error_typed = error as Error;
+        if (error_typed.name === "InvalidCredentials") return error_typed;
+
         console.error("Login error:", error);
-        return error as Error;
+        return error_typed;
       }
     },
     [loginMutation],
   );
 
   const registerMutation = RegisterMutation({
-    onSuccessAction: async (data: RegisterResponse) => {
-      setUser(data.user);
-      setCookie("authToken", data.token);
-      router.push(`/profile/${data.user.uuid}`);
-    },
-    onErrorAction: (error: Error) => {
-      console.error("Registration error:", error);
+    onSuccessAction: loginSucess,
+    onErrorAction: (error: Error | RegistrtionError) => {
       throw error;
     },
   });
 
   const register = async (
     credentials: RegisterCredentials,
-  ): Promise<void | Error> => {
+  ): Promise<void | RegistrtionError | Error> => {
     try {
       await registerMutation.mutateAsync(credentials);
     } catch (error) {
-      console.error("Registration error:", error);
-      return error as Error;
+      if (error instanceof Error) {
+        console.error("Registration error:", error);
+        return error;
+      }
+      return error as RegistrtionError;
     }
   };
 
@@ -98,7 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       }).then(async (res) => {
         if (res.status == 200) return (await res.json()) as User;
-        deleteCookie("authToken");
+        await deleteCookie("authToken");
         setUser(null);
         router.push("/login");
         throw new Error(await res.json());
@@ -112,9 +120,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [checkQuery]);
 
   const logoutMutation = LogoutMutation({
-    onSuccessAction: () => {
+    onSuccessAction: async () => {
       setUser(null);
-      deleteCookie("authToken");
+      await deleteCookie("authToken");
       router.push("/login");
     },
     onErrorAction: (error: Error) => {
@@ -125,13 +133,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async (): Promise<void | Error> => {
     try {
       const token: string | undefined = await getCookie("authToken");
-      if (!token) {
-        console.error("No token found");
-        throw Error("You are not logged in");
-      }
+      if (!token) throw Error("You are not logged in");
       await logoutMutation.mutateAsync(token);
     } catch (error) {
-      console.error("Logout error:", error);
       return error as Error;
     }
   };
@@ -144,10 +148,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const user = checkQuery.data;
             if (user) setUser(user);
             setLoading(false);
-          } else {
-            deleteCookie("authToken");
-            setUser(null);
-            router.push("/login");
           }
         };
 
