@@ -19,8 +19,10 @@ export default function Logout() {
       const error = await logout();
       if (error)
         displayError(error, {
+          onClose: () => router.push("/login"),
+          disableDefaultButtonAction: true,
+          overrideButtonMessage: "Back to login",
           defaultMessage: "An error ocured while logging out",
-          onClose: () => router.push("/"),
         });
     };
 
