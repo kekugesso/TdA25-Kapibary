@@ -1,13 +1,19 @@
 "use client";
 
-import { ReactNode, useState, createContext, useContext } from "react";
+import {
+  ReactNode,
+  useState,
+  createContext,
+  useContext,
+  useEffect,
+} from "react";
 import {
   Modal,
   ModalBody,
   ModalFooter,
   ModalHeader,
 } from "@/components/core/Modal";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export interface ErrorModalOptions {
   overrideButtonMessage?: string;
@@ -30,6 +36,10 @@ export const ErrorModalProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<Error | null>(null);
   const [options, setOptions] = useState<ErrorModalOptions | null>(null);
   const router = useRouter();
+  const path = usePathname();
+
+  // Reset error and options when path changes
+  useEffect(() => (setError(null), setOptions(null)), [path]);
 
   const handleClose = () => {
     setError(null);
