@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Game, Board, CustomUser, GameStatus
+from .models import Game, Board, CustomUser, GameStatus, QueryUsers
 
 
 class GameStatusSerializer(serializers.ModelSerializer):
@@ -123,3 +123,13 @@ class GameSerializerMultiplayer(serializers.ModelSerializer):
         model = Game
         fields = ['board', 'uuid', 'gameType', 'game_status', 'gameCode']
 
+class QueryUsersSerializerCreate(serializers.ModelSerializer):
+    class Meta:
+        model = QueryUsers
+        fields = ['user']
+
+class QueryUsersSerializerView(serializers.ModelSerializer):
+    user = CustomUserSerializerView(read_only=True)
+    class Meta:
+        model = QueryUsers
+        fields = ['user']

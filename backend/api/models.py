@@ -174,3 +174,6 @@ class GameStatus(models.Model):
             str: multiplayer game uuid
         """
         return f"<GameStatus {self.uuid}>"
+
+class QueryUsers(models.Model):
+    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='query_users')
