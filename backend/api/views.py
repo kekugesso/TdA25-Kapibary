@@ -1,6 +1,8 @@
 import uuid
 import random
 import string
+import re
+
 from datetime import timedelta
 from django.utils import timezone
 from django.forms.models import model_to_dict
@@ -10,14 +12,14 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import Game, Board, CustomUser, GameStatus
-from .serializers import GameSerializer, BoardSerializer, CustomUserSerializerView, CustomUserSerializerCreate, GameStatusSerializerCreate, GameSerializerMultiplayer, GameStatusForUserSerializerView
+from .models import Game, Board, CustomUser, GameStatus, QueryUsers
+from .serializers import GameSerializer, BoardSerializer, CustomUserSerializerView, CustomUserSerializerCreate, GameStatusSerializerCreate, GameSerializerMultiplayer, GameStatusForUserSerializerView, QueryUsersSerializerView, QueryUsersSerializerCreate
 
 
 class CustomPagination(PageNumberPagination):
-    page_size = 100  # Количество элементов на странице
-    page_size_query_param = 'page_size'  # Позволяет клиенту задавать размер страницы
-    max_page_size = 100  # Максимальный размер страницы
+    page_size = 100 
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 class AllUsersView(APIView):
@@ -35,7 +37,7 @@ class AllUsersView(APIView):
         returns:
             200: JSON with all users
         """
-        users = CustomUser.objects.all()
+        users = CustomUser.objects.filter(is_superuser=False)
         paginator = self.pagination_class()
         paginated_users = paginator.paginate_queryset(users, request)
 
@@ -53,6 +55,8 @@ class AllUsersView(APIView):
         """
         data = request.data
         data["is_superuser"] = False
+        if(is_valid_password(data["password"]) == False):
+            return Response({"message": "Heslo nesplňuje podminky"}, status=400)
         serializer = CustomUserSerializerCreate(data=data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
@@ -369,21 +373,25 @@ class FilterAPIView(APIView):
                 games = Game.objects.filter(
                     difficulty=dif,
                     updatedAt__gt=timezone.now() - timedelta(hours=24)
+                    gameType = "local"
                 )
             elif (data.get("updatedAt") == "7days"):
                 games = Game.objects.filter(
                     difficulty=dif,
                     updatedAt__gt=timezone.now() - timedelta(days=7)
+                    gameType = "local"
                 )
             elif (data.get("updatedAt") == "1month"):
                 games = Game.objects.filter(
                     difficulty=dif,
                     updatedAt__gt=timezone.now() - timedelta(days=30)
+                    gameType = "local"
                 )
             elif (data.get("updatedAt") == "3months"):
                 games = Game.objects.filter(
                     difficulty=dif,
                     updatedAt__gt=timezone.now() - timedelta(days=90)
+                    gameType = "local"
                 )
             serializer = GameSerializer(games, many=True)
             for game in serializer.data:
@@ -448,7 +456,7 @@ class Login(APIView):
 
     def post(self, request):
         data = request.data
-        if data['login'] is None or data['password'] is None:
+        if data.get('login') is None or data.get('password') is None:
             return Response({"message": "Missing login or password"}, status=400)
         if '@' in data['login']:
             user = CustomUser.objects.filter(email=data['login']).first()
@@ -473,13 +481,29 @@ class CheckToken(APIView):
         return Response(result, status=200)
 
 
-class FriedlyGameView(APIView):
-    permission_classes = [IsAuthenticated]
-
+class FreeplayGameView(APIView):
+    def get(self, request):
+        data = request.data
+        if(request.user.is_authenticated == False):
+            characters = string.ascii_lowercase + string.digits
+            authtoken = ''.join(random.choices(characters, k=40))
+            data["anonymousToken"] = authtoken
+            serializer = GameSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save()
+        game = Game.objects.filter(gameCode=data["code"]).last()
+        if game is None:
+            return Response({"message": "Game not found"}, status=404)
+        serializer = GameSerializerMultiplayer(game)
+        result = serializer.data
+        result["authtoken"] = game.anonymousToken
+        return Response(result, status=200)
+        
     def post(self, request):
         data = {
             "name": ''.join(random.choices(string.ascii_letters, k=10)),
             "gameType": "friendly",
+            "gameCode": random.randint(100000, 999999),
         }
 
         serializer = GameSerializer(data=data)
@@ -516,34 +540,6 @@ class FriedlyGameView(APIView):
 
         return Response(data, status=200)
 
-    def put(self, request):
-        uuid_game = request.data["game"]
-        data = request.data
-        game = Game.objects.get(uuid=uuid_game)
-        user = CustomUser.objects.get(uuid=request.user.uuid)
-        gamestatus_data = {
-            "player": user.uuid,
-            "result": "unknown",
-            "symbol": request.data["symbol"],
-            "game": game.uuid,  # Use instance instead of raw data
-            "elo": user.elo
-        }
-        serializer_gamestatus = GameStatusSerializerCreate(data=gamestatus_data)
-        if serializer_gamestatus.is_valid():
-            serializer_gamestatus.save()
-        else:
-            return Response(serializer_gamestatus.errors, status=400)
-        serialized_game = GameSerializerMultiplayer(game)
-        data = serialized_game.data
-
-        # Process board data
-        matrix = [["" for _ in range(15)] for _ in range(15)]
-        for symbol in data.get("board", []):
-            matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
-        data["board"] = matrix
-
-        return Response(data, status=200)
-
 
 class GamesHistoryView(APIView):
     def get(self, request, uuid):
@@ -556,8 +552,11 @@ class GamesHistoryView(APIView):
         result = []
         for game in data:
             hello = {}
-            hello["player1"] = game[0]
-            hello["player2"] = game[1]
+            if(len(game) < 2):
+                hello["player1"] = game[0]
+            else:
+                hello["player1"] = game[0]
+                hello["player2"] = game[1]
             result.append(hello)
         result = get_game_history(result, uuid)
         return Response(result, status=200)
@@ -581,30 +580,170 @@ def count_results(uuid, data):
     result["draws"] = count_draw
     return result
 
-def get_game_history(data, uuid_player):
+def  get_game_history(data, uuid_player):
     result = []
     for game in data:
         hello = {}
         opponent = {}
-        if(game["player1"]["player"]["uuid"] == uuid_player):
+        if game.get("player2") is None:
             hello["elo"] = game["player1"]["elo"]
             hello["symbol"] = game["player1"]["symbol"]
             hello["createdAt"] = game["player1"]["createdAt"]
             hello["result"] = game["player1"]["result"]
             hello["elo_change"] = game["player1"]["elodifference"]
-            opponent["username"] = game["player2"]["player"]["username"]
-            opponent["avatar"] = game["player2"]["player"]["avatar"]
-            opponent["elo"] = game["player2"]["elo"]
+            opponent["username"] = "Anonymous"
+            opponent["elo"] = 0
             hello["opponent"] = opponent
         else:
-            hello["elo"] = game["player2"]["elo"]
-            hello["symbol"] = game["player2"]["symbol"]
-            hello["createdAt"] = game["player2"]["createdAt"]
-            hello["result"] = game["player2"]["result"]
-            hello["elo_change"] = game["player2"]["elodifference"]
-            opponent["username"] = game["player1"]["player"]["username"]
-            opponent["avatar"] = game["player1"]["player"]["avatar"]
-            opponent["elo"] = game["player1"]["elo"]
-            hello["opponent"] = opponent
+            if(game["player1"]["player"]["uuid"] == uuid_player):
+                hello["elo"] = game["player1"]["elo"]
+                hello["symbol"] = game["player1"]["symbol"]
+                hello["createdAt"] = game["player1"]["createdAt"]
+                hello["result"] = game["player1"]["result"]
+                hello["elo_change"] = game["player1"]["elodifference"]
+                opponent["username"] = game["player2"]["player"]["username"]
+                opponent["elo"] = game["player2"]["elo"]
+                hello["opponent"] = opponent
+            else:
+                hello["elo"] = game["player2"]["elo"]
+                hello["symbol"] = game["player2"]["symbol"]
+                hello["createdAt"] = game["player2"]["createdAt"]
+                hello["result"] = game["player2"]["result"]
+                hello["elo_change"] = game["player2"]["elodifference"]
+                opponent["username"] = game["player1"]["player"]["username"]
+                opponent["elo"] = game["player1"]["elo"]
+                hello["opponent"] = opponent
         result.append(hello)
     return(result)
+
+class QueryView(APIView):
+    def post(self, request):
+        last_game_status = GameStatus.objects.filter(player=request.user.uuid).last()
+        if(last_game_status is None or last_game_status.result!="unknown"):
+            data = {"user": request.user.uuid}
+            serializer = QueryUsersSerializerCreate(data=data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(status=201)
+            else:
+                return Response(serializer.errors, status=400)
+        else:
+            return Response({"message": "Už máš rozehranou hru."}, status=400)
+    def delete(self, request):
+        data = {"user": request.user}
+        query = QueryUsers.objects.filter(user=request.user)
+        if query.exists():
+            query.delete()
+            return Response(status=204)
+        else:
+            return Response(status=404)
+
+
+class RatingView(APIView):
+    def get(self, request):
+        game_status = GameStatus.objects.filter(player=request.user.uuid).last()
+        if(game_status is None):
+            return Response({"message": "None"}, status=404)
+        if(game_status.result == "unknown"):
+            game = Game.objects.get(uuid=game_status.game.uuid)
+            data = GameSerializerMultiplayer(game).data
+            matrix = [["" for _ in range(15)] for _ in range(15)]
+            for symbol in data.get("board", []):
+                matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
+            data["board"] = matrix
+            return Response(data, status=200)
+        else:
+            return Response({"message": "None"}, status=404)
+    def post(self, request):
+        list = QueryUsers.objects.all().order_by('-user__elo')
+        result = []
+        serializer = QueryUsersSerializerView(list, many=True)
+        query_list = serializer.data
+        if(len(query_list) >= 2):
+            for i in range(0, len(query_list), 2):
+                data = {
+                    "name": ''.join(random.choices(string.ascii_letters, k=10)),
+                    "gameType": "rating",
+                }
+
+                serializer = GameSerializer(data=data)
+                if serializer.is_valid():
+                    game_instance = serializer.save()  # Save and keep reference
+                else:
+                    return Response(serializer.errors, status=400)
+                for j in range(2):
+                    try:
+                        data = query_list[i+j]["user"]["uuid"]
+                        if(j == 0):
+                            gamestatus_data = {
+                                "player": query_list[i+j]["user"]["uuid"],
+                                "result": "unknown",
+                                "symbol": "X",
+                                "game": game_instance.uuid,
+                                "elo": query_list[i+j]["user"]["elo"]
+                            }
+                        elif (j==1):
+                            gamestatus_data = {
+                                "player": query_list[i+j]["user"]["uuid"],
+                                "result": "unknown",
+                                "symbol": "O",
+                                "game": game_instance.uuid,
+                                "elo": query_list[i+j]["user"]["elo"]
+                            }
+                        serializer = GameStatusSerializerCreate(data=gamestatus_data)
+                        if serializer.is_valid():
+                            serializer.save()
+                        else:
+                            game_instance.delete()
+                            return Response(serializer.errors, status=400)
+                        serialized_game = GameSerializerMultiplayer(game_instance)
+                        data = serialized_game.data
+
+                        matrix = [["" for _ in range(15)] for _ in range(15)]
+                        for symbol in data.get("board", []):
+                            matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
+                        data["board"] = matrix
+                        result.append(data)
+                    except Exception as e:
+                        game_instance.delete()
+            if(len(query_list) % 2 == 1):
+                last_query = query_list[len(query_list)-1]["user"]["uuid"]
+                for i in range(len(query_list)):
+                    QueryUsers.objects.get(user=query_list[i]["user"]["uuid"]).delete()
+                serializer = QueryUsersSerializerCreate(data={"user": last_query})
+                if serializer.is_valid():
+                    serializer.save()
+        return Response(result, status=201)
+
+
+class TopView(APIView):
+    def get(self, request):
+        """
+        retrieves all users
+        returns:
+            200: JSON with all users
+        """
+        users = CustomUser.objects.filter(is_superuser=False, is_banned=False).order_by('-elo')
+        paginator = self.pagination_class()
+        paginated_users = paginator.paginate_queryset(users, request)
+
+        serializer = CustomUserSerializerView(paginated_users, many=True)
+        result = [count_results(user["uuid"], user) for user in serializer.data]
+
+        return paginator.get_paginated_response(result)
+
+def is_valid_password(password):
+    if len(password) < 8:
+        return False  # Kontrola délky
+
+    # Kontrola jednotlivých podmínek pomocí regulárních výrazů
+    if not re.search(r'[A-Z]', password):  # alespoň jedno velké písmeno
+        return False
+    if not re.search(r'[a-z]', password):  # alespoň jedno malé písmeno
+        return False
+    if not re.search(r'\d', password):  # alespoň jedna číslice
+        return False
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):  # alespoň jeden speciální znak
+        return False
+
+    return True

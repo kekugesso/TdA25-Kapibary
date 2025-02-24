@@ -26,12 +26,7 @@ class CustomUser(AbstractUser):
     uuid = models.UUIDField(
         default=uuid.uuid4, editable=False, primary_key=True)
     elo = models.IntegerField(null=False)
-    avatar = models.ImageField(
-        upload_to="avatars/",
-        max_length=255,
-        blank=False,
-        default="avatars/default.svg"
-    )
+    avatar = models.TextField(null=False)
     is_banned = models.BooleanField(default=False)
 
     def __repr__(self):
@@ -106,6 +101,8 @@ class Game(models.Model):
                                  default=GameState.UNKNOWN, null=False)
     gameType = models.CharField(choices=GameType.choices, max_length=20,
                                 default=GameType.LOCAL, null=False)
+    gameCode = models.TextField(null=True)
+    anonymousToken = models.TextField(null=True)
 
     def __repr__(self):
         """returns game uuid
@@ -181,3 +178,6 @@ class GameStatus(models.Model):
             str: multiplayer game uuid
         """
         return f"<GameStatus {self.uuid}>"
+
+class QueryUsers(models.Model):
+    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='query_users')
