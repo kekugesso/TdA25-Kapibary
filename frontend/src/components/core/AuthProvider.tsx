@@ -158,6 +158,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initializeAuth();
   }, [check, checkQuery, user, checkQuery.data, router, loading, path]);
 
+  useEffect(() => {
+    if (loading) return;
+    if (checkQuery.isError) return;
+    checkQuery.refetch();
+  }, [path, loading]);
+
   return (
     <AuthContext.Provider
       value={{
