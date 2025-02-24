@@ -87,6 +87,11 @@ export default function Profile({
     fetchGameHistory();
   }, [uuid, displayError, gameHistory]);
 
+  const formatedDate = (date: string) => {
+    const d = new Date(date);
+    return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+  };
+
   return loading || !user ? (
     <Loading />
   ) : (
@@ -109,10 +114,11 @@ export default function Profile({
           height={150}
           className="min-w-[150px] max-w-[150px] min-h-[150px] max-h-[150px] rounded-lg bg-black-dark dark:bg-white-dark text-white-dark dark:text-black-dark flex flex-center"
         />
-        <div className="flex flex-col space-y-5">
+        <div className="flex flex-col space-y-2">
           <h1 className="text-5xl text-center sm:text-left font-bold">
             {user.username}
           </h1>
+          <p className="text-sm">S námi od: {formatedDate(user.createdAt)}</p>
           <div className="flex h-full space-x-10">
             {[
               { title: "Výhry:", value: user.wins },
