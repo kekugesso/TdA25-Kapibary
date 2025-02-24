@@ -51,6 +51,14 @@ export const ErrorModalProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const displayError = (error: Error, options?: ErrorModalOptions) => {
+    /*
+      options = {
+        overrideButtonMessage: string, // If provided, this message will be displayed on the button
+        disableDefaultButtonAction: boolean, // If true, the default action will be disabled (router.back())
+        onClose: (error: Error) => void, // Function to run when modal is closed
+        defaultMessage: string, // If no error, this message will be displayed
+      }
+    */
     if (error) setError(error);
     if (options) setOptions(options);
     if (!error && options?.defaultMessage)
@@ -58,6 +66,14 @@ export const ErrorModalProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const displayMessage = (message: string, options?: ErrorModalOptions) => {
+    /*
+      options = {
+        overrideButtonMessage: string, // If provided, this message will be displayed on the button
+        disableDefaultButtonAction: boolean, // If true, the default action will be disabled (router.back())
+        onClose: (error: Error) => void, // Function to run when modal is closed
+        defaultMessage: string, // If no error, this message will be displayed
+      }
+    */
     setError(new Error(message));
     if (options) setOptions(options);
     if (!error && options?.defaultMessage)
