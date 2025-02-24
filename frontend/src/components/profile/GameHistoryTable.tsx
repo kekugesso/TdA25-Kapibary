@@ -49,8 +49,8 @@ export default function GameHistoryTable({
       <div className="max-h-[295px] w-full h-full overflow-y-auto">
         {gameHistory.map((game, index, array) => (
           <Link
-            href={`/games/${game.uuid}`}
-            key={game.uuid}
+            href={`/games/${game.game}`}
+            key={game.game}
             className="grid grid-cols-[10%,35%,10%,35%,10%] hover:bg-gray-100 dark:hover:bg-gray-800 ease-in-out transition-all border-b"
             {...(array.length >= 8 &&
               index === array.length - 1 && {
