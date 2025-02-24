@@ -3,8 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import ThemeSwitch from "@/components/core/ThemeSwitch";
 import { useEffect, useState } from "react";
+import UserButton from "./UserButton";
 
 interface NavbarItem {
   id: string;
@@ -14,20 +14,19 @@ interface NavbarItem {
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-
+  const path = usePathname();
   const toggleSidebar = () => setIsOpen((prev) => !prev);
 
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 640) {
-        setIsOpen(false);
-      }
-    };
+    const handleResize = () => window.innerWidth >= 640 && setIsOpen(false);
 
     window.addEventListener("resize", handleResize);
-
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    setIsOpen(false);
+  }, [path]);
 
   const NavLinks = () => {
     const path = usePathname();
@@ -40,9 +39,9 @@ export default function Navbar() {
         href: "/#about-us",
       },
       {
-        id: "new-game",
-        label: "Nová hra",
-        href: "/new-game",
+        id: "multiplayer",
+        label: "Multiplayer",
+        href: "/multiplayer",
       },
       {
         id: "games",
@@ -65,7 +64,7 @@ export default function Navbar() {
             {item.label}
           </Link>
         ))}
-        <ThemeSwitch />
+        <UserButton center={isOpen} />
       </>
     );
   };
