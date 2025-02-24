@@ -118,7 +118,9 @@ export default function Profile({
           <h1 className="text-5xl text-center sm:text-left font-bold">
             {user.username}
           </h1>
-          <p className="text-sm">S námi od: {formatedDate(user.createdAt)}</p>
+          <p className="text-sm text-center sm:text-left">
+            S námi od: {formatedDate(user.createdAt)}
+          </p>
           <div className="flex h-full space-x-10">
             {[
               { title: "Výhry:", value: user.wins },
