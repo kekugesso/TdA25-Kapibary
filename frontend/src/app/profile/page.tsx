@@ -11,11 +11,9 @@ export default function Profile() {
   const [ignore, setIgnore] = useState(false);
 
   useEffect(() => {
-    console.log(loading);
     if (loading) return;
     if (ignore) return;
     setIgnore(true);
-    console.log(user);
     if (!user) router.push("/login");
     else router.push(`/profile/${user.uuid}`);
   }, [user, router, ignore, loading]);
