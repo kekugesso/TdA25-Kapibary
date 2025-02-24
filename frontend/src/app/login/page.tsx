@@ -102,7 +102,7 @@ export default function LoginRegister() {
               mode={isRegisterMode}
               setModeAction={setIsRegisterMode}
             />
-            <div className="text-center text-white text-3xl font-bold -mt-5 mb-5">
+            <div className="text-center text-3xl font-bold -mt-5 mb-5">
               Přihlášení
             </div>
             <LoginForm
@@ -120,7 +120,7 @@ export default function LoginRegister() {
               mode={isRegisterMode}
               setModeAction={setIsRegisterMode}
             />
-            <div className="text-center text-white text-3xl font-bold -mt-5 mb-5">
+            <div className="text-center text-3xl font-bold -mt-5 mb-5">
               Registrace
             </div>
             <RegisterForm
