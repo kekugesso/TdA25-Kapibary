@@ -24,7 +24,7 @@ enum GameResult {
 }
 
 type GameHistory = {
-  uuid: string;
+  game: string;
   createdAt: string;
   elo: number;
   elo_change: number;
