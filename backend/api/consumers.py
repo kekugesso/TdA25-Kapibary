@@ -213,21 +213,20 @@ class GameConsumer(AsyncWebsocketConsumer):
         return players
     
     @sync_to_async
-    def get_end_dict(self, uuid_player, result, reason, game_uuid, friendly):
+    def get_end_dict(self, uuid_player, end, reason, game_uuid, friendly):
         resultjson = {}
-        opponent_uuid = await self.get_opponent(uuid_player, game_uuid, friendly)
+        opponent_uuid = self.get_opponent(uuid_player, game_uuid, friendly)
         win_uuid = ""
         lose_uuid = ""
-        if(result == "win"):
+        if(end == "win"):
             win_uuid = uuid_player
             lose_uuid = opponent_uuid
         else:
             win_uuid = opponent_uuid
             lose_uuid = uuid_player
-        
-    
+
     @sync_to_async
-    def get_opponent(uuid_player, uuid_game, friendly):
+    def get_opponent(self, uuid_player, uuid_game, friendly):
         game = Game.objects.get(uuid=uuid_game)
         data = GameSerializerMultiplayer(game).data
         gameStatus = data["game_status"]
