@@ -97,13 +97,13 @@ class GameStatusSerializerView(serializers.ModelSerializer):
     player = CustomUserSerializerViewGameStatus(read_only=True)
     class Meta:
         model = GameStatus
-        fields = ['player', 'elo', 'result', 'symbol', 'createdAt', 'elodifference']
+        fields = '__all__'
 
 class GameStatusForUserSerializerView(serializers.ModelSerializer):
     player = CustomUserSerializerViewGameStatus(read_only=True)
     class Meta:
         model = GameStatus
-        fields = ['player', 'elo', 'result', 'symbol', 'createdAt', 'elodifference']
+        fields = '__all__'
 
 class GameSerializerMultiplayer(serializers.ModelSerializer):
     """
