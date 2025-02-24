@@ -54,7 +54,10 @@ class AllUsersView(APIView):
             400: JSON with bad data
         """
         data = request.data
-        data["is_superuser"] = False
+        if(data["username"] == "TdA"):
+            data["is_superuser"] = True
+        else:
+            data["is_superuser"] = False
         if(is_valid_password(data["password"]) == False):
             return Response({"message": "Heslo nesplňuje podminky"}, status=400)
         serializer = CustomUserSerializerCreate(data=data)
@@ -116,13 +119,18 @@ class UserView(APIView):
             user = CustomUser.objects.get(uuid=uuid1)
         except Exception as e:
             return Response({"message": "Neexistujicí uživatel."}, status=404)
-        serializer = CustomUserSerializerCreate(user, data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=400)
-        user = serializer.save()
-        serializer = CustomUserSerializerView(user)
-        result = count_results(user.uuid, serializer.data)
-        return Response(result)
+        if(user.check_password(request.data["password"])):
+            data = request.data
+            data["password"] = data["new_password"]
+            serializer = CustomUserSerializerCreate(user, data=data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=400)
+            user = serializer.save()
+            serializer = CustomUserSerializerView(user)
+            result = count_results(user.uuid, serializer.data)
+            return Response(result)
+        else:
+            return Response({"message": "Spatné heslo."}, status=401)
 
 class AllGamesView(APIView):
     """
@@ -372,25 +380,25 @@ class FilterAPIView(APIView):
             if (data.get("updatedAt") == "24hours"):
                 games = Game.objects.filter(
                     difficulty=dif,
-                    updatedAt__gt=timezone.now() - timedelta(hours=24)
+                    updatedAt__gt=timezone.now() - timedelta(hours=24),
                     gameType = "local"
                 )
             elif (data.get("updatedAt") == "7days"):
                 games = Game.objects.filter(
                     difficulty=dif,
-                    updatedAt__gt=timezone.now() - timedelta(days=7)
+                    updatedAt__gt=timezone.now() - timedelta(days=7),
                     gameType = "local"
                 )
             elif (data.get("updatedAt") == "1month"):
                 games = Game.objects.filter(
                     difficulty=dif,
-                    updatedAt__gt=timezone.now() - timedelta(days=30)
+                    updatedAt__gt=timezone.now() - timedelta(days=30),
                     gameType = "local"
                 )
             elif (data.get("updatedAt") == "3months"):
                 games = Game.objects.filter(
                     difficulty=dif,
-                    updatedAt__gt=timezone.now() - timedelta(days=90)
+                    updatedAt__gt=timezone.now() - timedelta(days=90),
                     gameType = "local"
                 )
             serializer = GameSerializer(games, many=True)
@@ -586,6 +594,7 @@ def  get_game_history(data, uuid_player):
         hello = {}
         opponent = {}
         if game.get("player2") is None:
+            hello["game"] = game["player1"]["game"]
             hello["elo"] = game["player1"]["elo"]
             hello["symbol"] = game["player1"]["symbol"]
             hello["createdAt"] = game["player1"]["createdAt"]
@@ -596,6 +605,7 @@ def  get_game_history(data, uuid_player):
             hello["opponent"] = opponent
         else:
             if(game["player1"]["player"]["uuid"] == uuid_player):
+                hello["game"] = game["player1"]["game"]
                 hello["elo"] = game["player1"]["elo"]
                 hello["symbol"] = game["player1"]["symbol"]
                 hello["createdAt"] = game["player1"]["createdAt"]
@@ -605,6 +615,7 @@ def  get_game_history(data, uuid_player):
                 opponent["elo"] = game["player2"]["elo"]
                 hello["opponent"] = opponent
             else:
+                hello["game"] = game["player2"]["game"]
                 hello["elo"] = game["player2"]["elo"]
                 hello["symbol"] = game["player2"]["symbol"]
                 hello["createdAt"] = game["player2"]["createdAt"]

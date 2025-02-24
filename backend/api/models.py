@@ -26,7 +26,7 @@ class CustomUser(AbstractUser):
     uuid = models.UUIDField(
         default=uuid.uuid4, editable=False, primary_key=True)
     elo = models.IntegerField(null=False)
-    avatar = models.TextField(null=False)
+    avatar = models.TextField(null=False, default="")
     is_banned = models.BooleanField(default=False)
 
     def __repr__(self):
