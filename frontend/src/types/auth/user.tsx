@@ -34,10 +34,11 @@ type GameHistory = {
 };
 
 type UserSettings = {
-  username?: string;
+  username: string;
+  password: string;
   email?: string;
-  password?: string;
   avatar?: string;
+  new_password?: string;
 };
 
 type UserSettingsError = {
@@ -45,6 +46,7 @@ type UserSettingsError = {
   email?: string[];
   password?: string[];
   avatar?: string[];
+  new_password?: string[];
 };
 
 export type { User, SmallUser, GameHistory, UserSettings, UserSettingsError };

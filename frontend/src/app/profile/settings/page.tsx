@@ -20,7 +20,7 @@ export default function ProfileSettings() {
   const { user, loading } = useAuth();
   const { displayError, displayMessage } = useErrorModal();
   const router = useRouter();
-  const [settings, setSettings] = useState<UserSettings>({});
+  const [settings, setSettings] = useState<UserSettings | null>(null);
   const [settingsError, setSettingsError] = useState<UserSettingsError | null>(
     null,
   );
@@ -28,6 +28,12 @@ export default function ProfileSettings() {
   useEffect(() => {
     if (loading) return;
     if (!user) router.push("/login");
+    if (user)
+      setSettings({
+        password: "",
+        username: user.username,
+        ...(user.email && { email: user.email }),
+      });
   }, [user, router, loading]);
 
   const saveChangesMutation = useMutation({
@@ -36,49 +42,57 @@ export default function ProfileSettings() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Token ${getCookie("token")}`,
+          Authorization: `Token ${getCookie("authToken")}`,
         },
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        throw new Error((await response.json()).message);
+        const data = await response.json();
+        if (data.message) throw new Error(data.message);
+        else throw data as UserSettingsError;
       }
     },
-    onError: (error) => {
-      displayError(error as Error, {
-        defaultMessage: "Failed to save changes",
-      });
-    },
-    onSuccess: () => {
-      router.push("/profile");
-    },
+    onError: (error: Error | UserSettingsError) =>
+      error instanceof Error
+        ? displayError(error, {
+            defaultMessage: "Failed to save changes",
+            disableDefaultButtonAction: true,
+            overrideButtonMessage: "Zavřít",
+          })
+        : setSettingsError(error),
+    onSuccess: () => router.push("/profile"),
   });
 
   const Validation = (settings: UserSettings): UserSettingsError | void => {
-    // if (settings?.username)
-    //   return { username: ["Uživatelské jméno je povinné"] };
-    // if (!settings.password)
-    //   return { password: ["Uživatelské jméno je povinné"] };
-    //
-    // // password validation
-    // if (settings.password.length < 8)
-    //   return { password: ["Heslo musí mít alespoň 8 znaků"] };
-    // if (!settings.password.match(/[0-9]/))
-    //   return { password: ["Heslo musí obsahovat alespoň jedno číslo"] };
-    // if (!settings.password.match(/[a-z]/))
-    //   return { password: ["Heslo musí obsahovat alespoň jedno malé písmeno"] };
-    // if (!settings.password.match(/[A-Z]/))
-    //   return { password: ["Heslo musí obsahovat alespoň jedno velké písmeno"] };
-    // if (!settings.password.match(/[^a-zA-Z0-9]/))
-    //   return {
-    //     password: ["Heslo musí obsahovat alespoň jeden speciální znak"],
-    //   };
+    if (!settings.username)
+      return { username: ["Uživatelské jméno je povinné"] };
+    if (!settings.password) return { password: ["Heslo je povinné"] };
+
+    // password validation
+    if (!settings.new_password) return;
+    if (settings.new_password.length < 8)
+      return { new_password: ["Heslo musí mít alespoň 8 znaků"] };
+    if (!settings.new_password.match(/[0-9]/))
+      return { new_password: ["Heslo musí obsahovat alespoň jedno číslo"] };
+    if (!settings.new_password.match(/[a-z]/))
+      return {
+        new_password: ["Heslo musí obsahovat alespoň jedno malé písmeno"],
+      };
+    if (!settings.new_password.match(/[A-Z]/))
+      return {
+        new_password: ["Heslo musí obsahovat alespoň jedno velké písmeno"],
+      };
+    if (!settings.new_password.match(/[^a-zA-Z0-9]/))
+      return {
+        new_password: ["Heslo musí obsahovat alespoň jeden speciální znak"],
+      };
 
     return;
   };
 
   const saveChanges = async () => {
+    if (!settings) throw new Error("Settings are not set");
     const error = Validation(settings);
     if (error) {
       setSettingsError(error);
@@ -92,35 +106,37 @@ export default function ProfileSettings() {
       const response = await fetch(`/api/users/${user?.uuid}`, {
         method: "DELETE",
         headers: {
-          Authorization: `Token ${getCookie("token")}`,
+          Authorization: `Token ${getCookie("authToken")}`,
         },
       });
 
-      if (!response.ok) {
-        throw new Error((await response.json()).message);
-      }
+      if (!response.ok) throw new Error((await response.json()).message);
     },
-    onError: (error) => {
+    onError: (error) =>
       displayError(error as Error, {
         defaultMessage: "Failed to delete account",
-      });
-    },
-    onSuccess: () => {
-      router.push("/login");
-    },
+      }),
+    onSuccess: () => router.push("/login"),
   });
 
   const handleSettingsChange = (key: keyof UserSettings, value: string) => {
+    if (!settings) throw new Error("Settings are not set");
     // handle delete of key
-    // @ts-expect-error - TS doesn't know that key is a valid key of UserSettings
-    if (value === "" || value === user?.[key]) {
+    if (
+      key !== "username" &&
+      key !== "password" &&
+      // @ts-expect-error - TS doesn't know that key is a valid key of UserSettings
+      (value === "" || value === user?.[key])
+    ) {
       setSettings((prev) => {
+        // @ts-expect-error - TS doesn't know that settings can't be null
         const { [key]: _, ...rest } = prev;
         return rest;
       });
       return;
     }
     // handle change of key
+    // @ts-expect-error - TS doesn't know that settings can't be null
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -128,6 +144,7 @@ export default function ProfileSettings() {
   const [loadingAvatar, setLoadingAvatar] = useState(false);
   const handleDrag = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    if (!settings) throw new Error("Settings are not set");
     setLoadingAvatar(true);
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
@@ -171,6 +188,7 @@ export default function ProfileSettings() {
             setLoadingAvatar(false);
             return;
           }
+          // @ts-expect-error - TS doesn't know that settings can't be null
           setSettings((prev) => ({ ...prev, avatar: dataurl }));
         };
         reader.readAsDataURL(blob);
@@ -209,6 +227,7 @@ export default function ProfileSettings() {
   };
 
   const handleFile = (file: File) => {
+    if (!settings) throw new Error("Settings are not set");
     setLoadingAvatar(true);
     const reader = new FileReader();
     reader.onload = () => {
@@ -219,6 +238,7 @@ export default function ProfileSettings() {
         setLoadingAvatar(false);
         return;
       }
+      // @ts-expect-error - TS doesn't know that settings can't be null
       setSettings((prev) => ({ ...prev, avatar: dataurl }));
     };
     reader.readAsDataURL(file);
@@ -236,7 +256,7 @@ export default function ProfileSettings() {
     setIsDraging(false);
   };
 
-  return loading || saveChangesMutation.isPending ? (
+  return loading || !settings || !user || saveChangesMutation.isPending ? (
     <Loading />
   ) : (
     <article
@@ -246,12 +266,12 @@ export default function ProfileSettings() {
       onDragLeave={handleDragLeave}
     >
       <div className="flex flex-col flex-center sm:flex-row space-y-4 w-full">
-        <div className="relative min-w-[250px] min-h-[250px] w-[250px] h-[250px] flex flex-center cursor-pointer">
+        <div className="relative sm:min-w-[350px] sm:min-h-[350px] max-w-[350px] max-h-[350px] w-[80%] h-[80%] flex flex-center cursor-pointer">
           <Image
-            src={settings?.avatar || /* user?.avatar || */ "/img/bulb.svg"}
+            src={settings.avatar || user.avatar || "/img/bulb.svg"}
             alt="Profile"
-            width="64"
-            height="64"
+            width="300"
+            height="300"
             className="w-full h-full rounded-lg bg-gray-100 dark:bg-white-dark object-cover"
             onClick={() => setIsDraging(true)}
           />
@@ -264,15 +284,16 @@ export default function ProfileSettings() {
             onClick={() => setIsDraging(true)}
           />
         </div>
-        <div className="flex flex-col space-y-2 w-[50%] ml-5">
+        <div className="flex flex-col space-y-2 w-[80%] sm:w-[50%] sm:ml-5">
           <div className="flex flex-col space-y-2 w-full">
             <label htmlFor="username">Uživatelské jméno</label>
             <input
               type="text"
               id="username"
-              value={settings?.username || user?.username || ""}
+              value={settings.username || ""}
               onChange={(e) => handleSettingsChange("username", e.target.value)}
-              className="w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none focus:ring-1 focus:ring-blue-light"
+              className={`w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none border border-transparent focus:border-blue-light ${settingsError?.username ? "border-red-light dark:border-red-dark" : ""}`}
+              onFocus={() => setSettingsError(null)}
             />
             <div className="text-red-500 text-sm">
               {settingsError?.username || " "}
@@ -283,9 +304,10 @@ export default function ProfileSettings() {
             <input
               type="email"
               id="email"
-              value={settings?.email || user?.email || ""}
+              value={settings.email || ""}
               onChange={(e) => handleSettingsChange("email", e.target.value)}
-              className="w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none focus:ring-1 focus:ring-blue-light"
+              className={`w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none border border-transparent focus:border-blue-light ${settingsError?.email ? "border-red-light dark:border-red-dark" : ""}`}
+              onFocus={() => setSettingsError(null)}
             />
             <div className="text-red-500 text-sm">
               {settingsError?.email || " "}
@@ -296,35 +318,63 @@ export default function ProfileSettings() {
             <input
               type="password"
               id="password"
-              value={settings?.password || ""}
+              value={settings.password || ""}
               onChange={(e) => handleSettingsChange("password", e.target.value)}
-              className="w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none focus:ring-1 focus:ring-blue-light"
+              className={`w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none border border-transparent focus:border-blue-light ${settingsError?.password ? "border-red-light dark:border-red-dark" : ""}`}
+              onFocus={() => setSettingsError(null)}
             />
             <div className="text-red-500 text-sm">
               {settingsError?.password || " "}
             </div>
           </div>
+          <div className="flex flex-col space-y-2 w-full">
+            <label htmlFor="new-password">Nové Heslo</label>
+            <input
+              type="password"
+              id="new-password"
+              value={settings.new_password || ""}
+              onChange={(e) =>
+                handleSettingsChange("new_password", e.target.value)
+              }
+              className={`w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none border border-transparent focus:border-blue-light ${settingsError?.new_password ? "border-red-light dark:border-red-dark" : ""}`}
+              onFocus={() => setSettingsError(null)}
+            />
+            <div className="text-red-500 text-sm">
+              {settingsError?.new_password || " "}
+            </div>
+          </div>
         </div>
       </div>
       <button
-        className="bg-red-light dark:bg-red-dark text-white font-bold text-lg py-3 px-6 rounded-lg shadow-black-light shadow-sm transform transition-all duration-300 ease-in-out hover:scale-105"
+        className="flex flex-row flex-center text-red-light dark:text-red-dark font-bold text-lg transform transition-all duration-300 ease-in-out hover:scale-105"
         onClick={() => deleteAccountMutation.mutate()}
       >
+        <div
+          className="w-[24px] h-[24px] bg-red-light dark:bg-red-dark mr-1"
+          style={{
+            WebkitMaskImage: "url(/img/close_icon.svg)",
+            WebkitMaskSize: "contain",
+            WebkitMaskRepeat: "no-repeat",
+            WebkitMaskPosition: "center",
+          }}
+        ></div>
         Smazat účet
       </button>
 
-      <button
-        className="bg-blue-light dark:bg-blue-dark text-white font-bold text-lg py-3 px-6 rounded-lg shadow-black-light shadow-sm transform transition-all duration-300 ease-in-out hover:scale-105"
-        onClick={saveChanges}
-      >
-        Uložit
-      </button>
-      <button
-        className="bg-red-light dark:bg-red-dark text-white font-bold text-lg py-3 px-6 rounded-lg shadow-black-light shadow-sm transform transition-all duration-300 ease-in-out hover:scale-105"
-        onClick={() => router.push("/profile")}
-      >
-        Neukládat
-      </button>
+      <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 flex-center w-[80%] sm:w-full md:w-[90%] lg:w-[80%]">
+        <button
+          className="bg-blue-light dark:bg-blue-dark text-white font-bold text-lg py-3 w-full rounded-lg shadow-black-light shadow-sm transform transition-all duration-300 ease-in-out hover:scale-105"
+          onClick={saveChanges}
+        >
+          Uložit
+        </button>
+        <button
+          className="bg-red-light dark:bg-red-dark text-white font-bold text-lg py-3 w-full rounded-lg shadow-black-light shadow-sm transform transition-all duration-300 ease-in-out hover:scale-105"
+          onClick={() => router.push("/profile")}
+        >
+          Neukládat
+        </button>
+      </div>
 
       {isDraging && (
         <Modal open onClose={() => setIsDraging(false)}>
