@@ -121,7 +121,8 @@ class UserView(APIView):
             return Response({"message": "Neexistujicí uživatel."}, status=404)
         if(user.check_password(request.data["password"])):
             data = request.data
-            data["password"] = data["new_password"]
+            if(data.get("new_password") is not None and data.get("new_password") != ""):
+                data["password"] = data["new_password"]
             serializer = CustomUserSerializerCreate(user, data=data)
             if not serializer.is_valid():
                 return Response(serializer.errors, status=400)
@@ -130,7 +131,7 @@ class UserView(APIView):
             result = count_results(user.uuid, serializer.data)
             return Response(result)
         else:
-            return Response({"message": "Spatné heslo."}, status=401)
+            return Response({"password": "Spatné heslo."}, status=401)
 
 class AllGamesView(APIView):
     """

@@ -13,13 +13,14 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         uuid = self.scope["url_route"]["kwargs"]["uuid"]
-        """if(uuid not in self.data):
-            self.data[uuid] = {"tah": "X", "anonymous": "", "count_users": 1, "end": False}
+        if(uuid not in self.data):
+            self.data[uuid] = {"tah": "X", "anonymous": "", "count_users": 1, "end": None}
             friendly = await self.is_friendly(uuid)
             if(friendly):
                 self.data[uuid]["friendly"] = True
             else:
-                self.data[uuid]["time"] = await self.get_users_game_for_timer(uuid)
+                self.data[uuid]["friendly"] = False
+                self.data[uuid]["timer"] = await self.get_users_game_for_timer(uuid)
         if(uuid in self.data):
             self.data[uuid]["count_users"] += 1
             if(self.data[uuid]["count_users"] == 2 and not self.data[uuid]["friendly"]):
@@ -28,18 +29,18 @@ class GameConsumer(AsyncWebsocketConsumer):
                 token = await self.get_user_from_token()
                 control_token = await self.is_valid_token(token)
                 if not control_token:
-                    self.data[uuid]["anonymous"] = token"""
+                    self.data[uuid]["anonymous"] = token
         await self.channel_layer.group_add(f"game_{uuid}", self.channel_name)
         await self.accept()
         game = await self.get_game(uuid)
-        data = await self.get_game_data(uuid)
+        gamedata = await self.get_game_data(uuid)
         matrix = [["" for _ in range(15)] for _ in range(15)]
-        for symbol in data.get("board", []):
+        for symbol in gamedata.get("board", []):
             matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
-        data["board"] = matrix
+        gamedata["board"] = matrix
         if(game.anonymousToken is not None):
             self.data[uuid]["anonymous"] = game.anonymousToken
-        await self.send(text_data=json.dumps(data))
+        await self.send(text_data=json.dumps(gamedata, default=str))
 
     async def disconnect(self, close_code):
         uuid = self.scope["url_route"]["kwargs"]["uuid"]
@@ -59,38 +60,33 @@ class GameConsumer(AsyncWebsocketConsumer):
         if control:
             if not game_data["friendly"]:
                 spend_time = int(time.time() - game_data["start_time"])
-                game_data["time"][game_data["tah"]]["time"] -= spend_time
-                if(game_data["time"][game_data["tah"]]["time"] <= 0):
-                    game_data["end"] = True
-                    await self.channel_layer.group_send(
-                        f"game_{uuid}",
-                        {
-                            "type": "game_update",
-                            "message": json.dumps({"symbol": game_data["tah"], "end": True, "message": "Time is over."})
-                        }
-                    )
+                game_data["timer"][game_data["tah"]]["time"] -= spend_time
+                if(game_data["timer"][game_data["tah"]]["time"] <= 0):
+                    game_data["end"] = await self.get_end_dict(uuid_player, "lose", "timeout", uuid, game_data["friendly"])
                 else:
                     game_data["start_time"] = time.time()
+                data["time"] = game_data["timer"][game_data["tah"]]["time"]
             data["symbol"] = game_data["tah"]
-            data["time"] = game_data["time"][uuid_player]
-            if (data["symbol"] == game_data["tah"]):
-                if game_data["tah"] == "X":
-                    game_data["tah"] = "O"
-                else:
-                    game_data["tah"] = "X"
-                await self.save_board(data, uuid)
-                board = await self.get_list_board
+            if game_data["tah"] == "X":
+                game_data["tah"] = "O"
+            else:
+                game_data["tah"] = "X"
+            await self.save_board(data, uuid)
+            is_draw = await self.is_draw_board(uuid)
+            if is_draw:
+                game_data["end"] = await self.get_end_dict(uuid_player, "draw", "draw", uuid, game_data["friendly"])
+            else:
+                board = await self.get_list_board(uuid)
                 win_probality = await self.check_winner(board)
                 print(win_probality)
-                await self.channel_layer.group_send(
-                    f"game_{uuid}",
-                    {
-                        "type": "game_update",
-                        "message": json.dumps(data)
-                    }
-                )
-            else:
-                pass
+            data["end"] = game_data["end"]
+            await self.channel_layer.group_send(
+                f"game_{uuid}",
+                {
+                    "type": "game_update",
+                    "message": json.dumps(data)
+                }
+            )
         else:
             pass
 
@@ -109,7 +105,8 @@ class GameConsumer(AsyncWebsocketConsumer):
     def get_game_data(self, uuid):
         game = Game.objects.get(uuid=uuid)
         serializer = GameSerializerMultiplayer(game)
-        return serializer.data
+        data = serializer.data
+        return data
 
     @sync_to_async
     def get_symbol(self, uuid_game, uuid_user):
@@ -178,7 +175,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         return False, None
 
     @sync_to_async
-    def get_list_board(game_uuid):
+    def get_list_board(self, game_uuid):
         game = Game.objects.get(uuid=game_uuid)
         boards = Board.objects.filter(game=game_uuid)
         serializer = BoardSerializer(boards, many=True)
@@ -188,7 +185,9 @@ class GameConsumer(AsyncWebsocketConsumer):
             matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
         data = matrix
         return data
-    async def is_friendly(self, game_type):
+    @sync_to_async
+    def is_friendly(self, game_uuid):
+        game_type = Game.objects.get(uuid=game_uuid).gameType
         return game_type == "friendly"
     
     @sync_to_async
@@ -209,7 +208,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             hello["uuid"] = gamestatus["player"]["uuid"]
             hello["time"] = 480
             hello["result"] = "unknown"
-            players[gamestatus["player"]["symbol"]] = hello
+            players[gamestatus["symbol"]] = hello
         return players
     
     @sync_to_async
@@ -221,9 +220,30 @@ class GameConsumer(AsyncWebsocketConsumer):
         if(end == "win"):
             win_uuid = uuid_player
             lose_uuid = opponent_uuid
-        else:
+        elif(end == "lose"):
             win_uuid = opponent_uuid
             lose_uuid = uuid_player
+        elif(end == "draw"):
+            resultjson[uuid_player] = {"result": "draw",
+                                    "message": "Remiza."}
+            resultjson[opponent_uuid] = {"result": "draw",
+                                    "message": "Remiza."}
+        if(reason == "timeout"):
+            resultjson[win_uuid] = {"result": "win",
+                                    "message": "U soupeře vypršel čas."}
+            resultjson[lose_uuid] = {"result": "lose",
+                                    "message": "U tebe vypršel čas"}
+        elif(reason == "surrender"):
+            resultjson[win_uuid] = {"result": "win",
+                                    "message": "Soupeř se vzdal."}
+            resultjson[lose_uuid] = {"result": "lose",
+                                    "message": "Vzdal ses."}
+        elif(reason == "symbol"):
+            resultjson[win_uuid] = {"result": "win",
+                                    "message": "Složil jsi 5 symbolů do řady."}
+            resultjson[lose_uuid] = {"result": "lose",
+                                    "message": "Soupeř složil 5 symbolů do řady."}
+        return resultjson
 
     @sync_to_async
     def get_opponent(self, uuid_player, uuid_game, friendly):
@@ -254,3 +274,13 @@ class GameConsumer(AsyncWebsocketConsumer):
                 return result["player2"]["player"]["uuid"]
             else:
                 return result["player1"]["player"]["uuid"]
+    
+    @sync_to_async
+    def is_draw_board(self, game_uuid):
+        game = Game.objects.get(uuid=game_uuid)
+        boards = Board.objects.filter(game=game_uuid)
+        serializer = BoardSerializer(boards, many=True)
+        data = serializer.data
+        if(len(data) == 225):
+            return True
+        return False
