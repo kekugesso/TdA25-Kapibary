@@ -1,8 +1,10 @@
-import time
+import requests
 
-start_time = time.time()  # Запоминаем текущее время
-time.sleep(5)
-end_time = time.time()  # Запоминаем текущее время
+url = "http://localhost:8000/api/v1/users"
 
-elapsed_time = end_time - start_time  # Рассчитываем разницу во времени
-print(f"Прошло {int(elapsed_time)} секунд")
+data = {"username": "TdA",
+        "password": "StudentCyberGames25!",
+        "email": "tda@scg.cz",
+        "elo": -1}
+
+response = requests.post(url, json=data)

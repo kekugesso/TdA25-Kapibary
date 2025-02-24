@@ -3,7 +3,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async
 from rest_framework.authtoken.models import Token
 from .models import Game, GameStatus, Board
-from .serializers import BoardSerializer, GameStatusSerializerView, GameSerializerMultiplayer
+from .serializers import BoardSerializer, GameStatusSerializerView, GameSerializerMultiplayer, GameStatusForUserSerializerView
 import json
 import time
 
@@ -13,7 +13,7 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         uuid = self.scope["url_route"]["kwargs"]["uuid"]
-        if(uuid not in self.data):
+        """if(uuid not in self.data):
             self.data[uuid] = {"tah": "X", "anonymous": "", "count_users": 1, "end": False}
             friendly = await self.is_friendly(uuid)
             if(friendly):
@@ -28,11 +28,11 @@ class GameConsumer(AsyncWebsocketConsumer):
                 token = await self.get_user_from_token()
                 control_token = await self.is_valid_token(token)
                 if not control_token:
-                    self.data[uuid]["anonymous"] = token
+                    self.data[uuid]["anonymous"] = token"""
         await self.channel_layer.group_add(f"game_{uuid}", self.channel_name)
         await self.accept()
         game = await self.get_game(uuid)
-        data = GameSerializerMultiplayer(game).data
+        data = await self.get_game_data(uuid)
         matrix = [["" for _ in range(15)] for _ in range(15)]
         for symbol in data.get("board", []):
             matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
@@ -104,6 +104,12 @@ class GameConsumer(AsyncWebsocketConsumer):
     @sync_to_async
     def get_game(self, uuid):
         return Game.objects.get(uuid=uuid)
+
+    @sync_to_async
+    def get_game_data(self, uuid):
+        game = Game.objects.get(uuid=uuid)
+        serializer = GameSerializerMultiplayer(game)
+        return serializer.data
 
     @sync_to_async
     def get_symbol(self, uuid_game, uuid_user):
@@ -205,3 +211,47 @@ class GameConsumer(AsyncWebsocketConsumer):
             hello["result"] = "unknown"
             players[gamestatus["player"]["symbol"]] = hello
         return players
+    
+    @sync_to_async
+    def get_end_dict(self, uuid_player, result, reason, game_uuid, friendly):
+        resultjson = {}
+        opponent_uuid = await self.get_opponent(uuid_player, game_uuid, friendly)
+        win_uuid = ""
+        lose_uuid = ""
+        if(result == "win"):
+            win_uuid = uuid_player
+            lose_uuid = opponent_uuid
+        else:
+            win_uuid = opponent_uuid
+            lose_uuid = uuid_player
+        
+    
+    @sync_to_async
+    def get_opponent(uuid_player, uuid_game, friendly):
+        game = Game.objects.get(uuid=uuid_game)
+        data = GameSerializerMultiplayer(game).data
+        gameStatus = data["game_status"]
+        data = []
+        for game_status in gameStatus:
+            games = GameStatus.objects.filter(game=game_status["game"])
+            serializer = GameStatusForUserSerializerView(games, many=True)
+            data.append(serializer.data)
+        result = []
+        for game in data:
+            hello = {}
+            if(len(game) < 2):
+                hello["player1"] = game[0]
+            else:
+                hello["player1"] = game[0]
+                hello["player2"] = game[1]
+            result.append(hello)
+        if(result.get("player2") is None):
+            if(uuid_player == self.data[uuid_game]["anonymous"]):
+                return result["player1"]["player"]["uuid"]
+            else:
+                return "anonymous"
+        else:
+            if(uuid_player == result["player1"]["player"]["uuid"]):
+                return result["player2"]["player"]["uuid"]
+            else:
+                return result["player1"]["player"]["uuid"]
