@@ -57,7 +57,7 @@ export default function LoginRegister() {
     if (!registerCredentials.username)
       return { username: ["Uživatelské jméno je povinné"] };
     if (!registerCredentials.password)
-      return { password: ["Uživatelské jméno je povinné"] };
+      return { password: ["Heslo je povinné"] };
 
     // password validation
     if (registerCredentials.password.length < 8)
