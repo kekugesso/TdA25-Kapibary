@@ -23,7 +23,7 @@ import {
   RegisterMutation,
   LogoutMutation,
 } from "@/mutations/auth";
-import { getCookie, setCookie, deleteCookie } from "cookies-next";
+import { getCookie, setCookie, deleteCookie } from "cookies-next/client";
 
 export interface AuthContextType {
   user: User | null;
@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const loginSucess = async (data: LoginResponse | RegisterResponse) => {
     setUser(data.user);
-    await setCookie("authToken", data.token);
+    setCookie("authToken", data.token);
     router.push(`/profile/${data.user.uuid}`);
   };
 
@@ -102,11 +102,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await fetch("/api/check", {
         method: "GET",
         headers: {
-          Authorization: `Token ${await getCookie("authToken")}`,
+          Authorization: `Token ${getCookie("authToken")}`,
         },
       }).then(async (res) => {
         if (res.status == 200) return (await res.json()) as User;
-        await deleteCookie("authToken");
+        deleteCookie("authToken");
         setUser(null);
         router.push("/login");
         throw new Error(await res.json());
@@ -122,7 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logoutMutation = LogoutMutation({
     onSuccessAction: async () => {
       setUser(null);
-      await deleteCookie("authToken");
+      deleteCookie("authToken");
       router.push("/login");
     },
     onErrorAction: (error: Error) => {
@@ -132,7 +132,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async (): Promise<void | Error> => {
     try {
-      const token: string | undefined = await getCookie("authToken");
+      const token: string | undefined = getCookie("authToken");
       if (!token) throw Error("You are not logged in");
       await logoutMutation.mutateAsync(token);
     } catch (error) {
@@ -142,7 +142,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      if (await getCookie("authToken")) {
+      if (getCookie("authToken")) {
         const initializeUser = async () => {
           if (await check()) {
             const user = checkQuery.data;
@@ -161,6 +161,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (loading) return;
     if (checkQuery.isError) return;
+    if (!getCookie("authToken")) return;
     checkQuery.refetch();
   }, [path, loading]);
 
