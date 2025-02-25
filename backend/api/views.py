@@ -13,7 +13,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import Game, Board, CustomUser, GameStatus, QueryUsers
-from .serializers import GameSerializer, BoardSerializer, CustomUserSerializerView, CustomUserSerializerCreate, GameStatusSerializerCreate, GameSerializerMultiplayer, GameStatusForUserSerializerView, QueryUsersSerializerView, QueryUsersSerializerCreate
+from .serializers import GameSerializer, BoardSerializer, CustomUserSerializerView, CustomUserSerializerCreate, GameStatusSerializerCreate, GameSerializerMultiplayer, GameStatusForUserSerializerView, QueryUsersSerializerView, QueryUsersSerializerCreate, GameSerializerFreeplayView
 
 
 class CustomPagination(PageNumberPagination):
@@ -121,7 +121,11 @@ class UserView(APIView):
             return Response({"message": "Neexistujicí uživatel."}, status=404)
         if(user.check_password(request.data["password"])):
             data = request.data
-            data["password"] = data["new_password"]
+            if(data.get("new_password") is not None and data.get("new_password") != ""):
+                if(is_valid_password(data["new_password"])):
+                    data["password"] = data["new_password"]
+                else:
+                    return Response({"password": "Heslo nesplňuje podminky"}, status=400)
             serializer = CustomUserSerializerCreate(user, data=data)
             if not serializer.is_valid():
                 return Response(serializer.errors, status=400)
@@ -130,7 +134,7 @@ class UserView(APIView):
             result = count_results(user.uuid, serializer.data)
             return Response(result)
         else:
-            return Response({"message": "Spatné heslo."}, status=401)
+            return Response({"password": "Spatné heslo."}, status=401)
 
 class AllGamesView(APIView):
     """
@@ -490,19 +494,34 @@ class CheckToken(APIView):
 
 
 class FreeplayGameView(APIView):
-    def get(self, request):
+    def put(self, request):
         data = request.data
-        if(request.user.is_authenticated == False):
-            characters = string.ascii_lowercase + string.digits
-            authtoken = ''.join(random.choices(characters, k=40))
-            data["anonymousToken"] = authtoken
-            serializer = GameSerializer(data=data)
-            if serializer.is_valid():
-                serializer.save()
         game = Game.objects.filter(gameCode=data["code"]).last()
         if game is None:
             return Response({"message": "Game not found"}, status=404)
-        serializer = GameSerializerMultiplayer(game)
+        if(request.user.is_authenticated == False):
+            characters = string.ascii_lowercase + string.digits
+            authtoken = ''.join(random.choices(characters, k=40))
+            game.anonymousToken = authtoken
+            game.save()
+        if(request.user.is_authenticated == True):
+            gamestatus = GameStatus.objects.filter(game=game.uuid).first()
+            game_status_data = {
+                "player": request.user.uuid,
+                "result": "unknown",
+                "game": game.uuid,
+                "elo": request.user.elo
+            }
+            if(gamestatus.symbol == "X"):
+                game_status_data["symbol"] = "O"
+            else:
+                game_status_data["symbol"] = "X"
+            serializer_gamestatus = GameStatusSerializerCreate(data=game_status_data)
+            if serializer_gamestatus.is_valid():
+                serializer_gamestatus.save()
+            else:
+                return Response(serializer_gamestatus.errors, status=400)
+        serializer = GameSerializerFreeplayView(game)
         result = serializer.data
         result["authtoken"] = game.anonymousToken
         return Response(result, status=200)
@@ -537,16 +556,8 @@ class FreeplayGameView(APIView):
             return Response(serializer_gamestatus.errors, status=400)
 
         # Retrieve the saved object correctly
-        serialized_game = GameSerializerMultiplayer(game_instance)
-        data = serialized_game.data
-
-        # Process board data
-        matrix = [["" for _ in range(15)] for _ in range(15)]
-        for symbol in data.get("board", []):
-            matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
-        data["board"] = matrix
-
-        return Response(data, status=200)
+        serialized_game = GameSerializerFreeplayView(game_instance)
+        return Response(serialized_game.data, status=200)
 
 
 class GamesHistoryView(APIView):
@@ -633,6 +644,11 @@ class QueryView(APIView):
         last_game_status = GameStatus.objects.filter(player=request.user.uuid).last()
         if(last_game_status is None or last_game_status.result!="unknown"):
             data = {"user": request.user.uuid}
+            try:
+                QueryUsers.objects.get(user=request.user.uuid)
+                return Response({"message": "Již si zaznamenal"}, status=400)
+            except QueryUsers.DoesNotExist:
+                pass
             serializer = QueryUsersSerializerCreate(data=data)
             if serializer.is_valid():
                 serializer.save()
@@ -718,10 +734,13 @@ class RatingView(APIView):
                         result.append(data)
                     except Exception as e:
                         game_instance.delete()
+            last_query = None
             if(len(query_list) % 2 == 1):
                 last_query = query_list[len(query_list)-1]["user"]["uuid"]
-                for i in range(len(query_list)):
-                    QueryUsers.objects.get(user=query_list[i]["user"]["uuid"]).delete()
+            for i in range(len(query_list)):
+                queryuser = QueryUsers.objects.get(user=query_list[i]["user"]["uuid"])
+                queryuser.delete()
+            if last_query is not None:
                 serializer = QueryUsersSerializerCreate(data={"user": last_query})
                 if serializer.is_valid():
                     serializer.save()
