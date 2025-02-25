@@ -34,7 +34,7 @@ export default function MultiplayerLobby({
   const [findingGame, setFindingGame] = useState(false);
   const [joinGameModal, setJoinGameModal] = useState(false);
   const [createGameModal, setCreateGameModal] = useState(false);
-  const [inviteGameModal, setInviteGameModal] = useState(true);
+  const [inviteGameModal, setInviteGameModal] = useState(false);
 
   const createGameMutation = useMutation({
     mutationFn: async (symbol: "X" | "O") => {
