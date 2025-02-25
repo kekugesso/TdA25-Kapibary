@@ -133,3 +133,8 @@ class QueryUsersSerializerView(serializers.ModelSerializer):
     class Meta:
         model = QueryUsers
         fields = ['user']
+
+class GameSerializerFreeplayView(serializers.ModelSerializer):
+    class Meta:
+        model = Game
+        fields = ['uuid', 'gameCode']
