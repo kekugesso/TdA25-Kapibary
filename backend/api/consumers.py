@@ -521,5 +521,3 @@ class GameConsumer(AsyncWebsocketConsumer):
                     gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid).first()
                     gamestatus.result = "lose"
                     gamestatus.save()
-    
-        

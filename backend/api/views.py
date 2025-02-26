@@ -776,3 +776,21 @@ def is_valid_password(password):
         return False
 
     return True
+
+
+class SearchUserView(APIView):
+    def post(self, request):
+        data = request.data
+        user = CustomUser.objects.filter(username=data["username"]).first()
+        if user is None:
+            return Response(None, status=200)
+        
+        serializer = CustomUserSerializerView(user)
+        result = count_results(user.uuid, serializer.data)
+        if(not user.is_banned and not user.is_superuser):
+            users = CustomUser.objects.filter(is_superuser=False, is_banned=False).order_by('-elo')
+            for i in range(len(users)):
+                if users[i].username == data["username"]:
+                    result["position"] = i+1
+                    break
+        return Response(result, status=200)
