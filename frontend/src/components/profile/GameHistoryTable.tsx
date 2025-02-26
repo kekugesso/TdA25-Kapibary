@@ -46,16 +46,12 @@ export default function GameHistoryTable({
       </div>
 
       {/* Tbody */}
-      <div className="max-h-[295px] w-full h-full overflow-y-auto">
-        {gameHistory.map((game, index, array) => (
+      <div className="divide-y max-h-[295px] w-full h-full overflow-y-auto">
+        {gameHistory.map((game) => (
           <Link
-            href={`/games/${game.game}`}
+            href={`/multiplayer/${game.game}`}
             key={game.game}
-            className="grid grid-cols-[10%,35%,10%,35%,10%] hover:bg-gray-100 dark:hover:bg-gray-800 ease-in-out transition-all border-b"
-            {...(array.length >= 8 &&
-              index === array.length - 1 && {
-                style: { borderBottom: "none" },
-              })}
+            className="grid grid-cols-[10%,35%,10%,35%,10%] hover:bg-gray-100 dark:hover:bg-gray-800 ease-in-out transition-all"
           >
             <div className="flex flex-center">{formatDate(game.createdAt)}</div>
             <div className="border-l p-2 flex flex-center">
