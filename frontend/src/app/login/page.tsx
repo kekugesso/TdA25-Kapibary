@@ -23,8 +23,10 @@ export default function LoginRegister() {
 
   // Redirect to profile if user is logged in
   useEffect(() => {
-    if (loading === false && isLogged) router.push(`/profile/${user?.uuid}`);
-  }, [loading, isLogged, router, user]);
+    if (loading) return;
+    if (isLogged && user)
+      router.push(user.is_superuser ? "/admin" : `/profile/${user.uuid}`);
+  }, [isLogged, user, router, loading]);
 
   const [loginCredentials, setLoginCredentials] = useState<LoginCredentials>({
     login: "",

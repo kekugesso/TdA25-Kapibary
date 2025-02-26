@@ -9,6 +9,9 @@ type User = {
   wins: number;
   losses: number;
   draws: number;
+
+  is_superuser: boolean;
+  is_banned: boolean;
 };
 
 type SmallUser = {

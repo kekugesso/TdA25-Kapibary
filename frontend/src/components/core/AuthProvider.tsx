@@ -48,7 +48,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const loginSucess = async (data: LoginResponse | RegisterResponse) => {
     setUser(data.user);
     setCookie("authToken", data.token);
-    router.push(`/profile/${data.user.uuid}`);
+    router.prefetch(
+      data.user.is_superuser ? "/admin" : `/profile/${data.user.uuid}`,
+    );
   };
 
   const loginMutation = LoginMutation({
