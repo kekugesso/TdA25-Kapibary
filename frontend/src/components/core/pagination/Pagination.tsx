@@ -77,7 +77,6 @@ export function Pagination<T>({
 
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize);
-    console.log(newPageSize);
     setSearchParams("page_size", newPageSize.toString());
   };
 

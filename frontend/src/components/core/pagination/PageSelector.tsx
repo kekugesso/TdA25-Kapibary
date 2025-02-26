@@ -35,13 +35,15 @@ export function PageSelector() {
                 <span>...</span>
               </>
             )}
-            <button
-              key={n}
-              onClick={() => setPage(n)}
-              className={`${n === page ? "underline" : ""} p-2`}
-            >
-              {n}
-            </button>
+            {n <= Math.ceil(data.count / pageSize) && (
+              <button
+                key={n}
+                onClick={() => setPage(n)}
+                className={`${n === page ? "underline" : ""} p-2`}
+              >
+                {n}
+              </button>
+            )}
             {page < data.count / pageSize - 2 && i === 4 && (
               <>
                 <span>...</span>
