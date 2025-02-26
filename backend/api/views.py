@@ -640,6 +640,8 @@ def  get_game_history(data, uuid_player):
     return(result)
 
 class QueryView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         last_game_status = GameStatus.objects.filter(player=request.user.uuid).last()
         if(last_game_status is None or last_game_status.result!="unknown"):
@@ -658,7 +660,6 @@ class QueryView(APIView):
         else:
             return Response({"message": "Už máš rozehranou hru."}, status=400)
     def delete(self, request):
-        data = {"user": request.user}
         query = QueryUsers.objects.filter(user=request.user)
         if query.exists():
             query.delete()

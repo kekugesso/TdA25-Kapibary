@@ -1,9 +1,10 @@
+import math
 from typing import List, Optional
 from copy import deepcopy
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async
 from rest_framework.authtoken.models import Token
-from .models import Game, GameStatus, Board
+from .models import Game, GameStatus, Board, CustomUser
 from .serializers import BoardSerializer, GameStatusSerializerView, GameSerializerMultiplayer, GameStatusForUserSerializerView
 import json
 import time
@@ -15,7 +16,7 @@ class GameConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         uuid = self.scope["url_route"]["kwargs"]["uuid"]
         if(uuid not in self.data):
-            self.data[uuid] = {"tah": "X", "anonymous": "", "count_users": 1, "end": None}
+            self.data[uuid] = {"tah": "X", "anonymous": "", "count_users": 1, "end": None, "draw_to": "", "rematch_to": ""}
             friendly = await self.is_friendly(uuid)
             if(friendly):
                 self.data[uuid]["friendly"] = True
@@ -57,32 +58,68 @@ class GameConsumer(AsyncWebsocketConsumer):
             uuid_player = await self.get_token(token)
         else:
             uuid_player = game_data["anonymous"]
-        control = await self.control_player(uuid, uuid_player)
+        control = await self.control_player(uuid, uuid_player, game_data["tah"])
         if control:
-            if not game_data["friendly"]:
-                spend_time = int(time.time() - game_data["start_time"])
-                game_data["timer"][game_data["tah"]]["time"] -= spend_time
-                if(game_data["timer"][game_data["tah"]]["time"] <= 0):
-                    game_data["end"] = await self.get_end_dict(uuid_player, "lose", "timeout", uuid, game_data["friendly"])
-                else:
-                    game_data["start_time"] = time.time()
-                data["time"] = game_data["timer"][game_data["tah"]]["time"]
-            data["symbol"] = game_data["tah"]
-            
-            await self.save_board(data, uuid)
-            board = await self.get_list_board(uuid)
-            win_probality = await self.get_winning_board(board, 5, game_data["tah"])
-            if win_probality is not None:
-                game_data["end"] = await self.get_end_dict(uuid_player, "win", "symbol", uuid, game_data["friendly"])
-                data["win_board"] = win_probality
-            is_draw = await self.is_draw_board(uuid)
-            if is_draw and game_data["end"] is None:
-                game_data["end"] = await self.get_end_dict(uuid_player, "draw", "draw", uuid, game_data["friendly"])
-            if game_data["tah"] == "X":
-                game_data["tah"] = "O"
+            if(data.get("surrender") == True):
+                game_data["end"] = await self.get_end_dict(uuid_player, "lose", "surrender", uuid, game_data["friendly"])
+                opponent_uuid = await self.get_opponent(uuid_player, uuid, game_data["friendly"])
+                await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", game_data["friendly"])
+            elif("remiza" in data):
+                if(game_data["end"] is None):
+                    if(game_data["draw_to"] == ""):
+                        opponent_uuid = await self.get_opponent(uuid_player, uuid, game_data["friendly"])
+                        data["to"] = opponent_uuid
+                        game_data["draw_to"] = opponent_uuid
+                    else:
+                        if(data.get("remiza") == True):
+                            game_data["end"] = await self.get_end_dict(uuid_player, "draw", "agreed", uuid, game_data["friendly"])
+                            opponent_uuid = await self.get_opponent(uuid_player, uuid, game_data["friendly"])
+                            await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "draw", game_data["friendly"])
+                        else:
+                            game_data["draw_to"] = ""
+                            data["remiza"] = False
+            elif("rematch" in data):
+                if(game_data["end"] is not None):
+                    if(game_data["rematch_to"] == ""):
+                        opponent_uuid = await self.get_opponent(uuid_player, uuid, game_data["friendly"])
+                        data["to"] = opponent_uuid
+                        game_data["rematch_to"] = opponent_uuid
+                    else:
+                        if(data.get("rematch") == False):
+                            game_data["rematch_to"] = ""
+                        else:
+                            pass
             else:
-                game_data["tah"] = "X"
+                if not game_data["friendly"]:
+                    spend_time = int(time.time() - game_data["start_time"])
+                    game_data["timer"][game_data["tah"]]["time"] -= spend_time
+                    if(game_data["timer"][game_data["tah"]]["time"] <= 0):
+                        game_data["end"] = await self.get_end_dict(uuid_player, "lose", "timeout", uuid, game_data["friendly"])
+                        opponent_uuid = await self.get_opponent(uuid_player, uuid, False)
+                        await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", False)
+                    else:
+                        game_data["start_time"] = time.time()
+                    data["time"] = game_data["timer"][game_data["tah"]]["time"]
+                data["symbol"] = game_data["tah"]
+                await self.save_board(data, uuid)
+                board = await self.get_list_board(uuid)
+                win_probality = await self.get_winning_board(board, 5, game_data["tah"])
+                if win_probality is not None:
+                    game_data["end"] = await self.get_end_dict(uuid_player, "win", "symbol", uuid, game_data["friendly"])
+                    opponent_uuid = await self.get_opponent(uuid_player, uuid, game_data["friendly"])
+                    await self.write_result_to_db(uuid, uuid_player,  opponent_uuid, "win", game_data["friendly"])
+                    data["win_board"] = win_probality
+                is_draw = await self.is_draw_board(uuid)
+                if is_draw and game_data["end"] is None:
+                    game_data["end"] = await self.get_end_dict(uuid_player, "draw", "draw", uuid, game_data["friendly"])
+                    opponent_uuid = await self.get_opponent(uuid_player, uuid, game_data["friendly"])
+                    await self.write_result_to_db(uuid, uuid_player, opponent_uuid, "draw", game_data["friendly"])
+                if game_data["tah"] == "X":
+                    game_data["tah"] = "O"
+                else:
+                    game_data["tah"] = "X"
             data["end"] = game_data["end"]
+            print(data)
             await self.channel_layer.group_send(
                 f"game_{uuid}",
                 {
@@ -119,16 +156,27 @@ class GameConsumer(AsyncWebsocketConsumer):
         return gamestatus.symbol
 
     @sync_to_async
-    def control_player(self, uuid_game, uuid_user):
+    def control_player(self, uuid_game, uuid_user, tah):
         gamestatus = GameStatus.objects.filter(game=uuid_game)
         serializer = GameStatusSerializerView(gamestatus, many=True)
         players = []
         for gamestatus in serializer.data:
             players.append(gamestatus["player"]["uuid"])
         if(len(players) < 2):
-            return uuid_user in players or uuid_user == self.data[uuid_game]["anonymous"]
+            if(uuid_user in players):
+                if(uuid_user == self.data[uuid_game]["anonymous"]):
+                    gamestatus = GameStatus.objects.filter(player=players[0]).last()
+                    if(tah != gamestatus.symbol):
+                        return True
+                else:
+                    gamestatus = GameStatus.objects.filter(player=uuid_user).last()
+                    if(tah == gamestatus.symbol):
+                        return True
         else:
-            return uuid_user in players
+            if(uuid_user in players):
+                gamestatususer = GameStatus.objects.filter(player=uuid_user).last()
+                return gamestatususer.symbol == tah
+        return False
 
     async def get_user_from_token(self):
         headers = dict(deepcopy(self.scope["headers"]))
@@ -266,10 +314,9 @@ class GameConsumer(AsyncWebsocketConsumer):
             players[gamestatus["symbol"]] = hello
         return players
     
-    @sync_to_async
-    def get_end_dict(self, uuid_player, end, reason, game_uuid, friendly):
+    async def get_end_dict(self, uuid_player, end, reason, game_uuid, friendly):
         resultjson = {}
-        opponent_uuid = self.get_opponent(uuid_player, game_uuid, friendly)
+        opponent_uuid = await self.get_opponent(uuid_player, game_uuid, friendly)
         win_uuid = ""
         lose_uuid = ""
         if(end == "win"):
@@ -325,6 +372,37 @@ class GameConsumer(AsyncWebsocketConsumer):
                 hello["player1"] = game[0]
                 hello["player2"] = game[1]
             result.append(hello)
+        result = result[0]
+        if(result.get("player2") is None):
+            if(uuid_player == self.data[uuid_game]["anonymous"]):
+                return result["player1"]["player"]["uuid"]
+            else:
+                return "anonymous"
+        else:
+            if(uuid_player == result["player1"]["player"]["uuid"]):
+                return result["player2"]["player"]["uuid"]
+            else:
+                return result["player1"]["player"]["uuid"]
+    
+    def get_opponent_sync(self, uuid_player, uuid_game, friendly):
+        game = Game.objects.get(uuid=uuid_game)
+        data = GameSerializerMultiplayer(game).data
+        gameStatus = data["game_status"]
+        data = []
+        for game_status in gameStatus:
+            games = GameStatus.objects.filter(game=game_status["game"])
+            serializer = GameStatusForUserSerializerView(games, many=True)
+            data.append(serializer.data)
+        result = []
+        for game in data:
+            hello = {}
+            if(len(game) < 2):
+                hello["player1"] = game[0]
+            else:
+                hello["player1"] = game[0]
+                hello["player2"] = game[1]
+            result.append(hello)
+        result = result[0]
         if(result.get("player2") is None):
             if(uuid_player == self.data[uuid_game]["anonymous"]):
                 return result["player1"]["player"]["uuid"]
@@ -348,64 +426,100 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     @sync_to_async
     def write_result_to_db(self,  game_uuid, win_uuid, lose_uuid, result, friendly):
+        def get_elo_difference(uuid_player, uuid_game, result):
+            game_status = GameStatus.objects.get(game=uuid_game, player=uuid_player)
+            uuid_opponent = self.get_opponent_sync(uuid_player=uuid_player, uuid_game=uuid_game, friendly=False)
+            opponent = GameStatus.objects.get(player=uuid_opponent, game=uuid_game)
+            elo_opponent = opponent.elo
+            games = GameStatus.objects.filter(player_id=uuid_player)
+            count_win = 0
+            count_lose = 0
+            count_draw = 0
+            for game in games:
+                if game.result == "win":
+                    count_win += 1
+                elif game.result == "lose":
+                    count_lose += 1
+                elif game.result == "draw":
+                    count_draw += 1
+            if(result == "win"):
+                sa = 1
+            elif(result == "lose"):
+                sa = 0
+            elif(result == "draw"):
+                sa = 0.5
+            ea = 1/(1+10**((elo_opponent-game_status.elo)/400))
+            saea = sa - ea
+            if(count_draw == 0 and count_lose == 0 and count_win == 0):
+                podilher = 0
+            else:
+                podilher = (count_win+count_draw)/(count_win+count_lose+count_draw)
+            new_elo = float(game_status.elo) + 40*(saea*(1 + 0.5*(0.5-podilher)))
+            user = CustomUser.objects.get(uuid=uuid_player)
+            user.elo = new_elo
+            user.save()
+            elodifference = new_elo - game_status.elo
+            print(elodifference)
+            return math.ceil(elodifference)
+
         if(not friendly):
             if(result == "draw"):
-                gamestatus = GameStatus.objects.filter(game=game_uuid, player=win_uuid).first()
+                elodifference = get_elo_difference(win_uuid, game_uuid, "draw")
+                gamestatus = GameStatus.objects.get(game=game_uuid, player=win_uuid)
                 gamestatus.result = "draw"
+                gamestatus.elodifference = elodifference
                 gamestatus.save()
-                gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid).first()
+                elodifference = get_elo_difference(lose_uuid, game_uuid, "draw")
+                gamestatus = GameStatus.objects.get(game=game_uuid, player=lose_uuid)
                 gamestatus.result = "draw"
+                gamestatus.elodifference = elodifference
                 gamestatus.save()
             else:
-                gamestatus = GameStatus.objects.filter(game=game_uuid, player=win_uuid).first()
+                elodifference = get_elo_difference(win_uuid, game_uuid, "win")
+                gamestatus = GameStatus.objects.get(game=game_uuid, player=win_uuid)
                 gamestatus.result = "win"
+                gamestatus.elodifference = elodifference
                 gamestatus.save()
-                gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid).first()
+                elodifference = get_elo_difference(lose_uuid, game_uuid, "lose")
+                gamestatus = GameStatus.objects.get(game=game_uuid, player=lose_uuid)
                 gamestatus.result = "lose"
+                gamestatus.elodifference = elodifference
                 gamestatus.save()
         else:
-            if(result == "draw"):
-                if(win_uuid == self.data[game_uuid]["anonymous"]):
-                    player_uuid = lose_uuid
+            if(self.data[game_uuid]["anonymous"] != ""):
+                if(result == "draw"):
+                    if(win_uuid == self.data[game_uuid]["anonymous"]):
+                        player_uuid = lose_uuid
+                    else:
+                        player_uuid = win_uuid
+                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=player_uuid).first()
+                    gamestatus.result = "draw"
+                    gamestatus.save()
+                elif (result == "win"):
+                    if(win_uuid == self.data[game_uuid]["anonymous"]):
+                        player_uuid = lose_uuid
+                        gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid).first()
+                        gamestatus.result = "lose"
+                        gamestatus.save()
+                    elif(lose_uuid == self.data[game_uuid]["anonymous"]):
+                        player_uuid = win_uuid
+                        gamestatus = GameStatus.objects.filter(game=game_uuid, player=player_uuid).first()
+                        gamestatus.result = "win"
+                        gamestatus.save()
+            else:
+                if(result == "draw"):
+                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=win_uuid).first()
+                    gamestatus.result = "draw"
+                    gamestatus.save()
+                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid).first()
+                    gamestatus.result = "draw"
+                    gamestatus.save()
                 else:
-                    player_uuid = win_uuid
-                gamestatus = GameStatus.objects.filter(game=game_uuid, player=player_uuid).first()
-                gamestatus.result = "draw"
-                gamestatus.save()
-            elif (result == "win"):
-                if(win_uuid == self.data[game_uuid]["anonymous"]):
-                    player_uuid = lose_uuid
+                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=win_uuid).first()
+                    gamestatus.result = "win"
+                    gamestatus.save()
                     gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid).first()
                     gamestatus.result = "lose"
                     gamestatus.save()
-                elif(lose_uuid == self.data[game_uuid]["anonymous"]):
-                    player_uuid = win_uuid
-                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=player_uuid).first()
-                    gamestatus.result = "win"
-                    gamestatus.save()
-    @sync_to_async
-    def get_elo_difference(self, uuid_player, uuid_game, result):
-        game_status = GameStatus.objects.filter(game=uuid_game, player=uuid_player).first()
-        uuid_opponent = self.get_opponent(uuid_player=uuid_player, uuid_game=uuid_game, friendly=False)
-        opponent = GameStatus.objects.filter(player=uuid_opponent, game=uuid_game).first()
-        elo_opponent = opponent.elo
-        games = GameStatus.objects.filter(player_id=uuid_player)
-        count_win = 0
-        count_lose = 0
-        count_draw = 0
-        for game in games:
-            if game.result == "win":
-                count_win += 1
-            elif game.result == "lose":
-                count_lose += 1
-            elif game.result == "draw":
-                count_draw += 1
-        if(result == "win"):
-            sa = 1
-        elif(result == "lose"):
-            sa = 0
-        elif(result == "draw"):
-            sa = 0.5
-        ea = 1/(1+10*((elo_opponent-game_status.elo)/400))
-        saea = sa - ea
-        podilher = (count_win+count_draw)/(count_win+count_lose+count_draw)
+    
+        
