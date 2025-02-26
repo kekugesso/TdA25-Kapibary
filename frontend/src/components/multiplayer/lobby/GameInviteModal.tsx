@@ -27,20 +27,18 @@ export default function GameInviteModal({
         <div className="w-full h-full flex flex-center">
           <h2 className="text-sm text-center">
             Zkopírujte následující odkaz nebo kód {"'"}
-            <b className="font-bold">{gameCode}</b>
+            <b className="font-bold select-all">{gameCode}</b>
             {"'"} a pošlete jej kamarádovi, aby se mohl připojit do hry.
           </h2>
         </div>
         <div className="relative w-full h-full">
           <label htmlFor="gameLink">Odkaz:</label>
-          <input
-            type="text"
-            placeholder="Odkaz..."
+          <div
             id="gameLink"
-            className="w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none border border-transparent focus:border-blue-light"
-            value={`${window.location.host}/multiplayer?game=${gameCode}`}
-            readOnly
-          />
+            className="w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none border border-transparent focus:border-blue-light select-all"
+          >
+            {`${window.location.host}/multiplayer?game=${gameCode}`}
+          </div>
           <Image
             src="/img/copy_icon.svg"
             alt="copy"
