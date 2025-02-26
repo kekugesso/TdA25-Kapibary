@@ -108,7 +108,7 @@ export default function Profile({
       )}
       <div className="flex space-x-5 p-2 flex-col sm:flex-row flex-center sm:justify-normal sm:items-center">
         <Image
-          src={user.avatar || "/img/bulb.svg"}
+          src={user.avatar || "/img/avatar.svg"}
           alt="Profile Picture"
           width={150}
           height={150}

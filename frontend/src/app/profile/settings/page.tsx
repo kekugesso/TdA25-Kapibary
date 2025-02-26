@@ -268,7 +268,7 @@ export default function ProfileSettings() {
       <div className="flex flex-col flex-center sm:flex-row space-y-4 w-full">
         <div className="relative sm:min-w-[350px] sm:min-h-[350px] max-w-[350px] max-h-[350px] w-[80%] h-[80%] flex flex-center cursor-pointer">
           <Image
-            src={settings.avatar || user.avatar || "/img/bulb.svg"}
+            src={settings.avatar || user.avatar || "/img/avatar.svg"}
             alt="Profile"
             width="300"
             height="300"
