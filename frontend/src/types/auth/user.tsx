@@ -12,6 +12,7 @@ type User = {
 
   is_superuser: boolean;
   is_banned: boolean;
+  position?: number;
 };
 
 type SmallUser = {

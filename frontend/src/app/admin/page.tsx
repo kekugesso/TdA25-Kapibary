@@ -35,11 +35,11 @@ export default function Admin() {
     pageSize: number;
     search: string;
   }) => {
-    const res = await fetch(
-      `/api/users?page=${page}${
-        pageSize ? "&page_size=" + pageSize.toString() : ""
-      }${search ? "&username=" + search : ""}`,
-    );
+    const params = new URLSearchParams();
+    if (page) params.set("page", page.toString());
+    if (pageSize) params.set("page_size", pageSize.toString());
+    if (search) params.set("username", search);
+    const res = await fetch(`/api/users?${params}`);
     if (!res.ok) {
       throw new Error("Failed to fetch leaderboards");
     }
@@ -110,10 +110,13 @@ export default function Admin() {
           </div>
           <PagedItems<User>>
             {(items) => (
-              <ul className="p-[5%] space-y-2">
+              <ul className="px-[5%] pb-[5%] space-y-2">
                 {items.map((item) => (
                   <TableItem key={item.uuid} {...item} />
                 ))}
+                {items.length === 0 && (
+                  <div className="text-center">Žádné výsledky</div>
+                )}
               </ul>
             )}
           </PagedItems>

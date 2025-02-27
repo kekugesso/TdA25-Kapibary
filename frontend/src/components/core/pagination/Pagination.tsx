@@ -48,6 +48,15 @@ export function Pagination<T>({
       `${window.location.pathname}?${newSearchParams.toString()}`,
     );
   }, []);
+  const removeSearchParams = useCallback((key: string) => {
+    const newSearchParams = new URLSearchParams(window.location.search);
+    newSearchParams.delete(key);
+    window.history.replaceState(
+      {},
+      "",
+      `${window.location.pathname}?${newSearchParams.toString()}`,
+    );
+  }, []);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey,
@@ -60,7 +69,7 @@ export function Pagination<T>({
       setPage(1);
       setSearchParams("page", "1");
     }
-    if (data.count < page * pageSize) {
+    if (data.count < page * pageSize && data.count > 0) {
       const maxPage = Math.ceil(data.count / pageSize);
       setPage(maxPage);
       setSearchParams("page", maxPage.toString());
@@ -69,7 +78,18 @@ export function Pagination<T>({
       setPageSize(defaultPageSize);
       setSearchParams("page_size", defaultPageSize.toString());
     }
-  }, [data, page, pageSize, defaultPageSize, setSearchParams]);
+    if (search === "") removeSearchParams("search");
+    if (page === 1) removeSearchParams("page");
+    if (pageSize === defaultPageSize) removeSearchParams("page_size");
+  }, [
+    data,
+    page,
+    search,
+    pageSize,
+    defaultPageSize,
+    setSearchParams,
+    removeSearchParams,
+  ]);
 
   useEffect(() => {
     refetch();

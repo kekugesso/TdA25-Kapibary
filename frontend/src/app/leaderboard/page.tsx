@@ -17,11 +17,11 @@ export default function Leaderboard() {
     pageSize: number;
     search: string;
   }) => {
-    const res = await fetch(
-      `/api/top?page=${page}${
-        pageSize ? "&page_size=" + pageSize.toString() : ""
-      }${search ? "&username=" + search : ""}`,
-    );
+    const params = new URLSearchParams();
+    if (page) params.set("page", page.toString());
+    if (pageSize) params.set("page_size", pageSize.toString());
+    if (search) params.set("username", search);
+    const res = await fetch(`/api/top?${params}`);
     if (!res.ok) {
       throw new Error("Failed to fetch leaderboards");
     }
@@ -71,6 +71,9 @@ export default function Leaderboard() {
                   </Link>
                 </>
               ))}
+              {items.length === 0 && (
+                <div className="text-center">Žádné výsledky</div>
+              )}
             </ul>
           )}
         </PagedItems>
