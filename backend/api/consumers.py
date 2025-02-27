@@ -349,11 +349,14 @@ class GameConsumer(AsyncWebsocketConsumer):
                     player_symbol = "O"
                 else:
                     player_symbol = "X"
-            if(opponent_uuid == "anonymous"):
+            elif(opponent_uuid == "anonymous"):
                 if(player_symbol == "X"):
                     opponent_symbol = "O"
                 else:
                     opponent_symbol = "X"
+            else:
+                player_symbol = await self.get_symbol(game_uuid, uuid_player)
+                opponent_symbol = await self.get_symbol(game_uuid, opponent_uuid)
         else:
             opponent_symbol = await self.get_symbol(game_uuid, opponent_uuid)
             player_symbol = await self.get_symbol(game_uuid, uuid_player)
