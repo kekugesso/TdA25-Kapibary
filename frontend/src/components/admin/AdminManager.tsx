@@ -71,6 +71,7 @@ export function AdminManager({
       console.log("Change Elo action executed:", uuid, elo);
     } finally {
       setIsLoading(false);
+      closeEloModal();
     }
   };
 

@@ -4,12 +4,14 @@ import { useAuth } from "@/components/core/AuthProvider";
 import { useErrorModal } from "@/components/core/ErrorModalProvider";
 import Loading from "@/components/core/Loading";
 import PagedItems from "@/components/core/pagination/PagedItems";
+import { PagedSearchBar } from "@/components/core/pagination/PagedSearchBar";
 import PageSelector from "@/components/core/pagination/PageSelector";
 import Pagination from "@/components/core/pagination/Pagination";
 import { User } from "@/types/auth/user";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCookie } from "cookies-next/client";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -27,11 +29,17 @@ export default function Admin() {
   const fetchItems = async ({
     page,
     pageSize,
+    search,
   }: {
     page: number;
     pageSize: number;
+    search: string;
   }) => {
-    const res = await fetch(`/api/users?page=${page}&page_size=${pageSize}`);
+    const res = await fetch(
+      `/api/users?page=${page}${
+        pageSize ? "&page_size=" + pageSize.toString() : ""
+      }${search ? "&username=" + search : ""}`,
+    );
     if (!res.ok) {
       throw new Error("Failed to fetch leaderboards");
     }
@@ -46,12 +54,11 @@ export default function Admin() {
           "Content-Type": "application/json",
           Authorization: `Token ${getCookie("authToken")}`,
         },
-        body: JSON.stringify({ is_banned: true }),
+        body: JSON.stringify({ is_banned: !user?.is_banned || true }),
       });
       if (!res.ok) {
         throw new Error("Failed to ban user");
       }
-      return await res.json();
     },
     onError: (error) => {
       displayError(error as Error, {
@@ -76,7 +83,6 @@ export default function Admin() {
       if (!res.ok) {
         throw new Error("Failed to change elo");
       }
-      return await res.json();
     },
     onError: (error) => {
       displayError(error as Error, {
@@ -99,6 +105,9 @@ export default function Admin() {
     >
       <Pagination<User> queryKey={["users"]} fetcherAction={fetchItems}>
         <article className="flex flex-col">
+          <div className="px-[5%] pt-[3%] pb-[3%]">
+            <PagedSearchBar />
+          </div>
           <PagedItems<User>>
             {(items) => (
               <ul className="p-[5%] space-y-2">
@@ -122,31 +131,51 @@ function TableItem(item: User) {
   return (
     <li
       key={item.uuid}
-      className="p-2 grid grid-cols-[7.5%,7.5%,30%,10%,37.5%,7.5%] text-center items-center font-bold text-3xl bg-black rounded-lg"
+      className="p-4 space-x-2 grid grid-cols-[15%,37%,25.5%,22.5%] text-center items-center font-bold text-3xl bg-black rounded-lg"
     >
-      <span className="flex flex-center">
+      <Link
+        href={`/profile/${item.uuid}`}
+        className="flex text-center items-center"
+      >
         <Image
           src={item.avatar || "/img/avatar.svg"}
           alt={item.username}
           width={64}
           height={64}
-          className="rounded-lg bg-white"
+          className="min-h-[64px] min-w-[64px] rounded-lg bg-white mr-2"
         />
-      </span>
-      <span className="text-start">
-        {item.username}({item.elo})
-      </span>
-      <button
-        onClick={() => ban(item.username, item.uuid)}
-        className="bg-red text-white rounded-lg p-2"
-      >
-        Ban
-      </button>
+        {item.username} <span className="text-gray-400 ml-1">({item.elo})</span>
+      </Link>
+      <span />
       <button
         onClick={() => changeElo(item.username, item.uuid, item.elo)}
-        className="bg-green text-white rounded-lg p-2"
+        className="rounded-lg p-2 flex flex-center"
       >
-        Change Elo
+        <div
+          className="w-[38px] h-[38px] bg-black dark:bg-white mr-1"
+          style={{
+            WebkitMaskImage: "url(/img/edit_icon.svg)",
+            WebkitMaskSize: "contain",
+            WebkitMaskRepeat: "no-repeat",
+            WebkitMaskPosition: "center",
+          }}
+        ></div>
+        Úprava Ela
+      </button>
+      <button
+        onClick={() => ban(item.username, item.uuid)}
+        className={`flex flex-center rounded-lg p-2 ${item.is_banned ? "text-blue-light dark:text-blue-dark" : "text-red-light dark:text-red-dark"}`}
+      >
+        <div
+          className={`w-[38px] h-[38px] mr-1 ${item.is_banned ? "bg-blue-light dark:bg-blue-dark" : "bg-red-light dark:bg-red-dark"}`}
+          style={{
+            WebkitMaskImage: "url(/img/ban_icon.svg)",
+            WebkitMaskSize: "contain",
+            WebkitMaskRepeat: "no-repeat",
+            WebkitMaskPosition: "center",
+          }}
+        ></div>
+        {item.is_banned ? "Unban" : "Ban"}
       </button>
     </li>
   );

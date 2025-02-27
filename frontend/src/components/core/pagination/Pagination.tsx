@@ -13,6 +13,7 @@ export interface PaginationManagerProps<T> {
   fetcherAction: (params: {
     page: number;
     pageSize: number;
+    search: string;
   }) => Promise<PaginationData<T>>;
   defaultPageSize?: number;
   children: React.ReactNode;
@@ -33,6 +34,10 @@ export function Pagination<T>({
     const pageSizeParam = searchParams.get("page_size");
     return pageSizeParam ? Number.parseInt(pageSizeParam) : defaultPageSize;
   });
+  const [search, setSearch] = useState(() => {
+    const searchParam = searchParams.get("search");
+    return searchParam ? searchParam : "";
+  });
 
   const setSearchParams = useCallback((key: string, value: string) => {
     const newSearchParams = new URLSearchParams(window.location.search);
@@ -46,7 +51,7 @@ export function Pagination<T>({
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey,
-    queryFn: () => fetcherAction({ page, pageSize }),
+    queryFn: () => fetcherAction({ page, pageSize, search }),
   });
 
   useEffect(() => {
@@ -68,7 +73,7 @@ export function Pagination<T>({
 
   useEffect(() => {
     refetch();
-  }, [page, pageSize, refetch]);
+  }, [page, pageSize, search, refetch]);
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -80,11 +85,18 @@ export function Pagination<T>({
     setSearchParams("page_size", newPageSize.toString());
   };
 
+  const handleSearch = (newSearch: string) => {
+    setSearch(newSearch);
+    setSearchParams("search", newSearch);
+  };
+
   const contextValue: PaginationContextProps<T> = {
     page,
     setPage: handlePageChange,
     pageSize,
     setPageSize: handlePageSizeChange,
+    search,
+    setSearch: handleSearch,
     data: data || { results: [], count: 0, next: null, previous: null },
     error,
     isLoading: isLoading || !data,

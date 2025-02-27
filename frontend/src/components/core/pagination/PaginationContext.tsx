@@ -13,6 +13,8 @@ export interface PaginationContextProps<T> {
   setPage: (n: number) => void;
   pageSize: number;
   setPageSize: (n: number) => void;
+  search: string;
+  setSearch: (text: string) => void;
 
   data: PaginationData<T>;
   error: Error | null;
