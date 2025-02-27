@@ -514,7 +514,7 @@ class CheckToken(APIView):
 class FreeplayGameView(APIView):
     def put(self, request):
         data = request.data
-        game = Game.objects.filter(gameCode=data["code"]).last()
+        game = Game.objects.filter(gameCode=data["code"]).first()
         if game is None:
             return Response({"message": "Game not found"}, status=404)
         if(request.user.is_authenticated == False):
@@ -545,7 +545,7 @@ class FreeplayGameView(APIView):
         return Response(result, status=200)
         
     def post(self, request):
-        game_status = GameStatus.objects.filter(player=request.user.uuid).last()
+        game_status = GameStatus.objects.filter(player=request.user.uuid).first()
         if(game_status is not None):
             if(game_status.result == "unknown"):
                 return Response({"message": "You are already in a game"}, status=400)
@@ -610,12 +610,14 @@ def count_results(uuid, data):
     count_lose = 0
     count_draw = 0
     for game in games:
-        if game.result == "win":
-            count_win += 1
-        elif game.result == "lose":
-            count_lose += 1
-        elif game.result == "draw":
-            count_draw += 1
+        hello = Game.objects.get(uuid=game.game.uuid)
+        if(hello.gameType == "rating"):
+            if game.result == "win":
+                count_win += 1
+            elif game.result == "lose":
+                count_lose += 1
+            elif game.result == "draw":
+                count_draw += 1
     result["wins"] = count_win
     result["losses"] = count_lose
     result["draws"] = count_draw
@@ -665,7 +667,7 @@ class QueryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        last_game_status = GameStatus.objects.filter(player=request.user.uuid).last()
+        last_game_status = GameStatus.objects.filter(player=request.user.uuid).first()
         if(last_game_status is None or last_game_status.result!="unknown"):
             data = {"user": request.user.uuid}
             try:
@@ -692,7 +694,7 @@ class QueryView(APIView):
 
 class RatingView(APIView):
     def get(self, request):
-        game_status = GameStatus.objects.filter(player=request.user.uuid).last()
+        game_status = GameStatus.objects.filter(player=request.user.uuid).first()
         if(game_status is None):
             return Response({"message": "None"}, status=404)
         if(game_status.result == "unknown"):
@@ -725,11 +727,16 @@ class RatingView(APIView):
                 for j in range(2):
                     try:
                         data = query_list[i+j]["user"]["uuid"]
+                        symbol_random = random.choice(["X", "O"])
+                        if(symbol_random == "X"):
+                            second_symbol = "O"
+                        else:
+                            second_symbol = "X"
                         if(j == 0):
                             gamestatus_data = {
                                 "player": query_list[i+j]["user"]["uuid"],
                                 "result": "unknown",
-                                "symbol": "X",
+                                "symbol": symbol_random,
                                 "game": game_instance.uuid,
                                 "elo": query_list[i+j]["user"]["elo"]
                             }
@@ -737,7 +744,7 @@ class RatingView(APIView):
                             gamestatus_data = {
                                 "player": query_list[i+j]["user"]["uuid"],
                                 "result": "unknown",
-                                "symbol": "O",
+                                "symbol": second_symbol,
                                 "game": game_instance.uuid,
                                 "elo": query_list[i+j]["user"]["elo"]
                             }

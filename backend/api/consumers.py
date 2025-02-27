@@ -191,16 +191,16 @@ class GameConsumer(AsyncWebsocketConsumer):
         if(len(players) < 2):
             if(uuid_user in players):
                 if(uuid_user == self.data[uuid_game]["anonymous"]):
-                    gamestatus = GameStatus.objects.filter(player=players[0]).last()
+                    gamestatus = GameStatus.objects.filter(player=players[0]).first()
                     if(tah != gamestatus.symbol):
                         return True
                 else:
-                    gamestatus = GameStatus.objects.filter(player=uuid_user).last()
+                    gamestatus = GameStatus.objects.filter(player=uuid_user).first()
                     if(tah == gamestatus.symbol):
                         return True
         else:
             if(uuid_user in players):
-                gamestatususer = GameStatus.objects.filter(player=uuid_user).last()
+                gamestatususer = GameStatus.objects.filter(player=uuid_user).first()
                 return gamestatususer.symbol == tah
         return False
 
@@ -599,10 +599,10 @@ class GameConsumer(AsyncWebsocketConsumer):
         if(uuid_user == self.data[uuid_game]["anonymous"] or opponent == "anonymous"):
             if(uuid_user == self.data[uuid_game]["anonymous"]):
                 user = CustomUser.objects.get(uuid=opponent)
-                game_status1_symbol = GameStatus.objects.filter(player=opponent).last().symbol
+                game_status1_symbol = GameStatus.objects.filter(player=opponent).first().symbol
             else:
                 user = CustomUser.objects.get(uuid=uuid_user)
-                game_status1_symbol = GameStatus.objects.filter(player=uuid_user).last().symbol
+                game_status1_symbol = GameStatus.objects.filter(player=uuid_user).first().symbol
             if(game_status1_symbol == "X"):
                 symbol = "O"
             else:
@@ -621,7 +621,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                 game_instance.delete()
         else:
             user1 = CustomUser.objects.get(uuid=uuid_user)
-            game_status1_symbol = GameStatus.objects.filter(player=uuid_user).last().symbol
+            game_status1_symbol = GameStatus.objects.filter(player=uuid_user).first().symbol
             user2 = CustomUser.objects.get(uuid=opponent)
             if(game_status1_symbol == "X"):
                 game_status2_symbol = "O"
