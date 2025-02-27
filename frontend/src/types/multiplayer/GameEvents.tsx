@@ -6,7 +6,7 @@ export type GameSurrender = {
 };
 
 export type GameDraw = {
-  remiza: boolean;
+  draw: boolean;
 };
 
 export type GameRematch = {

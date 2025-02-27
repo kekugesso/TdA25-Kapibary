@@ -18,11 +18,13 @@ import {
 import { getCookie } from "cookies-next/client";
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
 } from "react";
+import { MessageType } from "@/types/multiplayer/MessageType";
 
 export interface GameManagerContextProps {
   isLoading: boolean;
@@ -87,57 +89,96 @@ export function GameManager({
     return () => clearInterval(interval);
   }, [gameEndData]);
 
-  const handleMessage = (event: MessageEvent) => {
-    try {
+  const handleInitialData = useCallback(
+    (data: MultiplayerGame) => {
+      setData(data);
+      setGameBoard(data.board);
+      setUserSymbol(
+        data.game_status.find(
+          (status) =>
+            status.player.uuid ===
+            (isLogged ? user?.uuid : getCookie("authToken")),
+        )?.symbol ?? null,
+      );
+      setIsLoading(false);
+    },
+    [isLogged, user],
+  );
+
+  const handleMove = useCallback(
+    (moveMessage: GetGameMove) => {
+      if (moveMessage.end) setGameEndData(moveMessage.end);
+
+      setGameBoard((prevBoard) => {
+        const newBoard = [...prevBoard];
+        newBoard[moveMessage.row] = [...prevBoard[moveMessage.row]];
+        newBoard[moveMessage.row][moveMessage.column] = moveMessage.symbol;
+        return newBoard;
+      });
+
+      // TIME
+      if (moveMessage.time)
+        if (moveMessage.symbol === userSymbol) setUserTime(moveMessage.time);
+        else setOpponentTime(moveMessage.time);
+    },
+    [userSymbol],
+  );
+
+  const handleDraw = useCallback((drawMessage: GameWantDraw) => {
+    if (drawMessage.end) setGameEndData(drawMessage.end);
+    else setWantDraw(true);
+    window.alert("Draw");
+  }, []);
+  const handleRematch = useCallback((rematchMessage: GameWantRematch) => {
+    if (rematchMessage.end) setGameEndData(rematchMessage.end);
+    setWantRematch(true);
+    window.alert("Rematch");
+  }, []);
+  const handleSurrender = useCallback((surrenderMessage: GameWantSurrender) => {
+    setGameEndData(surrenderMessage.end);
+    window.alert("Surrender");
+  }, []);
+
+  const handleMessage = useCallback(
+    (event: MessageEvent) => {
       console.log("event", event);
-      const message = JSON.parse(event.data) as
-        | MultiplayerGame
-        | GameWantDraw
-        | GameWantRematch
-        | GameWantSurrender;
+      const message = JSON.parse(event.data);
 
-      if ((message as MultiplayerGame)?.gameCode) {
-        setData(message as MultiplayerGame);
-        setGameBoard((message as MultiplayerGame).board);
-        setUserSymbol(
-          (message as MultiplayerGame).game_status.find(
-            (status) =>
-              status.player.uuid ===
-              (isLogged ? user?.uuid : getCookie("authToken")),
-          )?.symbol ?? null,
-        );
-        setIsLoading(false);
-      } else if ((message as GetGameMove)?.row) {
-        if ((message as GetGameMove).end)
-          setGameEndData((message as GetGameMove).end);
-
-        // TIME
-        if ((message as GetGameMove).time)
-          // @ts-expect-error - TS doesn't know that time is not null
-          setUserTime((message as GetGameMove).time);
-        // @ts-expect-error - TS doesn't know that time is not null
-        else setOpponentTime((time) => time + 1);
-      } else if ((message as GameWantDraw)?.draw_to) {
-        if ((message as GameWantDraw).end)
-          setGameEndData((message as GameWantDraw).end);
-        else setWantDraw(true);
-        window.alert("Draw");
-      } else if ((message as GameWantRematch)?.rematch_to) {
-        if ((message as GameWantRematch).end)
-          setGameEndData((message as GameWantRematch).end);
-        setWantRematch(true);
-        window.alert("Rematch");
-      } else if ((message as GameWantSurrender)?.end) {
-        setGameEndData((message as GameWantSurrender).end);
-        window.alert("Surrender");
-      } else throw new Error("Invalid message from server");
-    } catch (error) {
-      console.error("Failed to parse WebSocket message:", event.data, error);
-      displayMessage("Invalid message from server");
-    }
-  };
+      switch (message.type) {
+        case MessageType.init:
+          return handleInitialData(message as MultiplayerGame);
+        case MessageType.move:
+          return handleMove(message as GetGameMove);
+        case MessageType.draw:
+          return handleDraw(message as GameWantDraw);
+        case MessageType.rematch:
+          return handleRematch(message as GameWantRematch);
+        case MessageType.surrender:
+          return handleSurrender(message as GameWantSurrender);
+        default:
+          console.error("Failed to parse WebSocket message:", event.data);
+          displayMessage("Invalid message type from server");
+      }
+    },
+    [
+      handleInitialData,
+      handleMove,
+      handleDraw,
+      handleRematch,
+      handleSurrender,
+      displayMessage,
+    ],
+  );
 
   useEffect(() => {
+    if (!uuid) return;
+    if (websocketRef.current) websocketRef.current.close();
+    if (!isLogged && !getCookie("authToken")) {
+      displayMessage("You need to be logged in to play multiplayer");
+      return;
+    }
+
+    setIsLoading(true);
     const websocket = new WebSocket(
       `ws://${window.location.hostname}:2568/ws/game/${uuid}`,
     );
@@ -152,9 +193,9 @@ export function GameManager({
       setIsConnected(false);
     };
 
-    websocketRef.current.onopen = handleOpen;
-    websocketRef.current.onclose = handleClose;
-    websocketRef.current.onmessage = handleMessage;
+    websocket.onopen = handleOpen;
+    websocket.onclose = handleClose;
+    websocket.onmessage = handleMessage;
 
     return () => {
       websocket.removeEventListener("open", handleOpen);
@@ -162,22 +203,13 @@ export function GameManager({
       websocket.removeEventListener("message", handleMessage);
       websocket.close();
     };
-  }, [uuid]);
+  }, [uuid, isLogged, displayMessage, handleMessage]);
 
   const sendMessage = (message: object) => {
-    if (websocketRef.current?.readyState === WebSocket.OPEN)
+    if (websocketRef.current?.readyState === WebSocket.OPEN) {
       websocketRef.current.send(JSON.stringify(message));
-    else console.error("WebSocket is not open");
-  };
-
-  const handleMove = (x: number, y: number) => {
-    sendMessage({ row: x, column: y } as GameMove);
-    setGameBoard((prevBoard) => {
-      const newBoard = [...prevBoard];
-      newBoard[y] = [...prevBoard[y]];
-      newBoard[y][x] = userSymbol ?? "";
-      return newBoard;
-    });
+      console.log("Sent message", message);
+    } else console.error("WebSocket is not open");
   };
 
   return (
@@ -197,12 +229,14 @@ export function GameManager({
         wantRematch,
         wantDraw,
 
-        makeMove: handleMove,
+        makeMove: (x: number, y: number) => {
+          sendMessage({ row: y, column: x } as GameMove);
+        },
         surrender: () => {
           sendMessage({ surrender: true } as GameSurrender);
         },
         draw: () => {
-          sendMessage({ remiza: true } as GameDraw);
+          sendMessage({ draw: true } as GameDraw);
         },
         rematch: () => {
           sendMessage({ rematch: true } as GameRematch);

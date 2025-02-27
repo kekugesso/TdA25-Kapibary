@@ -5,7 +5,6 @@ import {
   GameManager,
   useGameManager,
 } from "@/components/multiplayer/game/GameManager";
-import { useErrorModal } from "@/components/core/ErrorModalProvider";
 import { useEffect, useState } from "react";
 import Board from "@/components/game/Board";
 
