@@ -108,7 +108,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                                 data["draw"] = False
                     else:
                         send = False
-                elif(data.get("row") is not None and data.get("column") is not None and not await sync_to_async(self.if_cell_exist)(uuid, data["row"], data["column"])):
+                elif(data.get("row") is not None and data.get("column") is not None and not await sync_to_async(self.if_cell_exist)(uuid, data["row"], data["column"]) and game_data["end"] is None):
                     data["type"] = "new_symbol"
                     if not game_data["friendly"]:
                         spend_time = int(time.time() - game_data["start_time"])
