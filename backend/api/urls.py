@@ -17,5 +17,4 @@ urlpatterns = [
     path('api/v1/query', views.QueryView.as_view()),
     path('api/v1/rating', views.RatingView.as_view()),
     path('api/v1/top', views.TopView.as_view()),
-    path('api/v1/searchuser', views.SearchUserView.as_view()),
 ]
