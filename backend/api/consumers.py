@@ -104,8 +104,9 @@ class GameConsumer(AsyncWebsocketConsumer):
                         game_data["start_time"] = time.time()
                     data["time"] = game_data["timer"][game_data["tah"]]["time"]
                 data["symbol"] = game_data["tah"]
-                await self.save_board(data, uuid)
-                board = await self.get_list_board(uuid)
+                if(game_data["end"] is None):
+                    await self.save_board(data, uuid)
+                    board = await self.get_list_board(uuid)
                 win_probality = await self.get_winning_board(board, 5, game_data["tah"])
                 if win_probality is not None:
                     game_data["end"] = await self.get_end_dict(uuid_player, "win", "symbol", uuid, game_data["friendly"])
