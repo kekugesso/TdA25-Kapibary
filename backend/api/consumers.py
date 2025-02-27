@@ -64,7 +64,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             if(await self.control_if_player(uuid, uuid_player)):
                 if(game_data["end"] is not None):
                     if(game_data["rematch_to"] == ""):
-                        opponent_uuid = await self.get_opponent(uuid_player, uuid, game_data["friendly"])
+                        opponent_uuid = await self.get_opponent(uuid_player, uuid)
                         data["to"] = opponent_uuid
                         game_data["rematch_to"] = opponent_uuid
                     else:
@@ -76,18 +76,18 @@ class GameConsumer(AsyncWebsocketConsumer):
         if control:
             if(data.get("surrender") == True):
                 game_data["end"] = await self.get_end_dict(uuid_player, "lose", "surrender", uuid, game_data["friendly"])
-                opponent_uuid = await self.get_opponent(uuid_player, uuid, game_data["friendly"])
+                opponent_uuid = await self.get_opponent(uuid_player, uuid)
                 await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", game_data["friendly"])
             elif("remiza" in data):
                 if(game_data["end"] is None):
                     if(game_data["draw_to"] == ""):
-                        opponent_uuid = await self.get_opponent(uuid_player, uuid, game_data["friendly"])
+                        opponent_uuid = await self.get_opponent(uuid_player, uuid)
                         data["to"] = opponent_uuid
                         game_data["draw_to"] = opponent_uuid
                     else:
                         if(data.get("remiza") == True):
                             game_data["end"] = await self.get_end_dict(uuid_player, "draw", "agreed", uuid, game_data["friendly"])
-                            opponent_uuid = await self.get_opponent(uuid_player, uuid, game_data["friendly"])
+                            opponent_uuid = await self.get_opponent(uuid_player, uuid)
                             await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "draw", game_data["friendly"])
                         else:
                             game_data["draw_to"] = ""
@@ -98,7 +98,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                     game_data["timer"][game_data["tah"]]["time"] -= spend_time
                     if(game_data["timer"][game_data["tah"]]["time"] <= 0):
                         game_data["end"] = await self.get_end_dict(uuid_player, "lose", "timeout", uuid, game_data["friendly"])
-                        opponent_uuid = await self.get_opponent(uuid_player, uuid, False)
+                        opponent_uuid = await self.get_opponent(uuid_player, uuid)
                         await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", False)
                     else:
                         game_data["start_time"] = time.time()
@@ -110,13 +110,13 @@ class GameConsumer(AsyncWebsocketConsumer):
                 win_probality = await self.get_winning_board(board, 5, game_data["tah"])
                 if win_probality is not None:
                     game_data["end"] = await self.get_end_dict(uuid_player, "win", "symbol", uuid, game_data["friendly"])
-                    opponent_uuid = await self.get_opponent(uuid_player, uuid, game_data["friendly"])
+                    opponent_uuid = await self.get_opponent(uuid_player, uuid)
                     await self.write_result_to_db(uuid, uuid_player,  opponent_uuid, "win", game_data["friendly"])
                     data["win_board"] = win_probality
                 is_draw = await self.is_draw_board(uuid)
                 if is_draw and game_data["end"] is None:
                     game_data["end"] = await self.get_end_dict(uuid_player, "draw", "draw", uuid, game_data["friendly"])
-                    opponent_uuid = await self.get_opponent(uuid_player, uuid, game_data["friendly"])
+                    opponent_uuid = await self.get_opponent(uuid_player, uuid)
                     await self.write_result_to_db(uuid, uuid_player, opponent_uuid, "draw", game_data["friendly"])
                 if game_data["tah"] == "X":
                     game_data["tah"] = "O"
@@ -320,40 +320,59 @@ class GameConsumer(AsyncWebsocketConsumer):
     
     async def get_end_dict(self, uuid_player, end, reason, game_uuid, friendly):
         resultjson = {}
-        opponent_uuid = await self.get_opponent(uuid_player, game_uuid, friendly)
+        opponent_uuid = await self.get_opponent(uuid_player, game_uuid)
+        if(friendly):
+            if(uuid_player == "anonymous"):
+                opponent_symbol = await self.get_symbol(game_uuid, opponent_uuid)
+                if(opponent_symbol == "X"):
+                    player_symbol = "O"
+                else:
+                    player_symbol = "X"
+            if(opponent_uuid == "anonymous"):
+                if(player_symbol == "X"):
+                    opponent_symbol = "O"
+                else:
+                    opponent_symbol = "X"
+        else:
+            opponent_symbol = await self.get_symbol(game_uuid, opponent_uuid)
+            player_symbol = await self.get_symbol(game_uuid, uuid_player)
         win_uuid = ""
         lose_uuid = ""
         if(end == "win"):
+            win_symbol = player_symbol
             win_uuid = uuid_player
             lose_uuid = opponent_uuid
+            lose_symbol = opponent_symbol
         elif(end == "lose"):
+            win_symbol = opponent_symbol
             win_uuid = opponent_uuid
             lose_uuid = uuid_player
+            lose_symbol = player_symbol
         elif(end == "draw"):
             if(reason == "deska"):
-                resultjson[uuid_player] = {"result": "draw",
+                resultjson[player_symbol] = {"result": "draw",
                                         "message": "Hrací plocha byla naplňěná symboly."}
-                resultjson[opponent_uuid] = {"result": "draw",
+                resultjson[opponent_symbol] = {"result": "draw",
                                         "message": "Hrací plocha byla naplňěná symboly."}
             elif(reason == "agreed"):
-                resultjson[uuid_player] = {"result": "draw",
+                resultjson[player_symbol] = {"result": "draw",
                                         "message": "Po dohodě hráčů je remiza."}
-                resultjson[opponent_uuid] = {"result": "draw",
+                resultjson[opponent_symbol] = {"result": "draw",
                                         "message": "Po dohodě hráčů je remiza."}
         if(reason == "timeout"):
-            resultjson[win_uuid] = {"result": "win",
+            resultjson[win_symbol] = {"result": "win",
                                     "message": "U soupeře vypršel čas."}
-            resultjson[lose_uuid] = {"result": "lose",
+            resultjson[lose_symbol] = {"result": "lose",
                                     "message": "U tebe vypršel čas"}
         elif(reason == "surrender"):
-            resultjson[win_uuid] = {"result": "win",
+            resultjson[win_symbol] = {"result": "win",
                                     "message": "Soupeř se vzdal."}
-            resultjson[lose_uuid] = {"result": "lose",
+            resultjson[lose_symbol] = {"result": "lose",
                                     "message": "Vzdal ses."}
         elif(reason == "symbol"):
-            resultjson[win_uuid] = {"result": "win",
+            resultjson[win_symbol] = {"result": "win",
                                     "message": "Složil jsi 5 symbolů do řady."}
-            resultjson[lose_uuid] = {"result": "lose",
+            resultjson[lose_symbol] = {"result": "lose",
                                     "message": "Soupeř složil 5 symbolů do řady."}
         return resultjson
 
