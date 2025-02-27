@@ -64,10 +64,13 @@ class GameConsumer(AsyncWebsocketConsumer):
             uuid_player = game_data["anonymous"]
         if(data.get("surrender") == True):
             if(await self.control_if_player(uuid, uuid_player)):
-                data["type"] = "surrender"
-                game_data["end"] = await self.get_end_dict(uuid_player, "lose", "surrender", uuid, game_data["friendly"])
-                opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", game_data["friendly"])
+                if(game_data["end"] is None):
+                    data["type"] = "surrender"
+                    game_data["end"] = await self.get_end_dict(uuid_player, "lose", "surrender", uuid, game_data["friendly"])
+                    opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                    await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", game_data["friendly"])
+                else:
+                    send = False
             else:
                 send = False
         elif("rematch" in data):
