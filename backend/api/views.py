@@ -701,7 +701,7 @@ class RatingView(APIView):
         else:
             return Response({"message": "None"}, status=404)
     def post(self, request):
-        list = QueryUsers.objects.all().order_by('-user__elo')
+        list = QueryUsers.objects.all().order_by('user__elo')
         result = []
         serializer = QueryUsersSerializerView(list, many=True)
         query_list = serializer.data
