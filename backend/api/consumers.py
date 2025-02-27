@@ -18,7 +18,7 @@ class GameConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         uuid = self.scope["url_route"]["kwargs"]["uuid"]
         if(uuid not in self.data):
-            self.data[uuid] = {"tah": "X", "anonymous": "", "count_users": 1, "end": None, "draw_to": "", "rematch_to": ""}
+            self.data[uuid] = {"tah": "X", "anonymous": "", "count_users": 1, "end": None, "draw_to": "", "rematch_to": "", "friendly": False}
             friendly = await self.is_friendly(uuid)
             if(friendly):
                 self.data[uuid]["friendly"] = True
@@ -60,79 +60,82 @@ class GameConsumer(AsyncWebsocketConsumer):
             uuid_player = await self.get_token(token)
         else:
             uuid_player = game_data["anonymous"]
-        if("rematch" in data):
+        if(data.get("surrender") == True):
+            if(await self.control_if_player(uuid, uuid_player)):
+                game_data["end"] = await self.get_end_dict(uuid_player, "lose", "surrender", uuid, game_data["friendly"])
+                opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", game_data["friendly"])
+        elif("rematch" in data):
             if(await self.control_if_player(uuid, uuid_player)):
                 if(game_data["end"] is not None):
                     if(game_data["rematch_to"] == ""):
                         opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                        data["to"] = opponent_uuid
+                        data["rematch_to"] = opponent_uuid
                         game_data["rematch_to"] = opponent_uuid
                     else:
                         if(data.get("rematch") == False):
                             game_data["rematch_to"] = ""
                         else:
-                            data["rematch"] = await self.create_new_game(uuid_player, uuid, game_data["friendly"], game_data["anonymous"])
-        control = await self.control_player(uuid, uuid_player, game_data["tah"])
-        if control:
-            if(data.get("surrender") == True):
-                game_data["end"] = await self.get_end_dict(uuid_player, "lose", "surrender", uuid, game_data["friendly"])
-                opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", game_data["friendly"])
-            elif("remiza" in data):
-                if(game_data["end"] is None):
-                    if(game_data["draw_to"] == ""):
-                        opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                        data["to"] = opponent_uuid
-                        game_data["draw_to"] = opponent_uuid
-                    else:
-                        if(data.get("remiza") == True):
-                            game_data["end"] = await self.get_end_dict(uuid_player, "draw", "agreed", uuid, game_data["friendly"])
-                            opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                            await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "draw", game_data["friendly"])
-                        else:
-                            game_data["draw_to"] = ""
-                            data["remiza"] = False
-            else:
-                if not game_data["friendly"]:
-                    spend_time = int(time.time() - game_data["start_time"])
-                    game_data["timer"][game_data["tah"]]["time"] -= spend_time
-                    if(game_data["timer"][game_data["tah"]]["time"] <= 0):
-                        game_data["end"] = await self.get_end_dict(uuid_player, "lose", "timeout", uuid, game_data["friendly"])
-                        opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                        await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", False)
-                    else:
-                        game_data["start_time"] = time.time()
-                    data["time"] = game_data["timer"][game_data["tah"]]["time"]
-                data["symbol"] = game_data["tah"]
-                if(game_data["end"] is None):
-                    await self.save_board(data, uuid)
-                    board = await self.get_list_board(uuid)
-                win_probality = await self.get_winning_board(board, 5, game_data["tah"])
-                if win_probality is not None:
-                    game_data["end"] = await self.get_end_dict(uuid_player, "win", "symbol", uuid, game_data["friendly"])
-                    opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                    await self.write_result_to_db(uuid, uuid_player,  opponent_uuid, "win", game_data["friendly"])
-                    game_data["win_board"] = win_probality
-                is_draw = await self.is_draw_board(uuid)
-                if is_draw and game_data["end"] is None:
-                    game_data["end"] = await self.get_end_dict(uuid_player, "draw", "draw", uuid, game_data["friendly"])
-                    opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                    await self.write_result_to_db(uuid, uuid_player, opponent_uuid, "draw", game_data["friendly"])
-                if game_data["tah"] == "X":
-                    game_data["tah"] = "O"
-                else:
-                    game_data["tah"] = "X"
-            data["end"] = game_data["end"]
-            print(data)
-            await self.channel_layer.group_send(
-                f"game_{uuid}",
-                {
-                    "type": "game_update",
-                    "message": json.dumps(data)
-                }
-            )
+                            if(uuid_player == game_data["rematch_to"]):
+                                data["new_game"] = await sync_to_async(self.create_new_game)(uuid_player, uuid, game_data["friendly"], game_data["anonymous"])
         else:
-            pass
+            control = await self.control_player(uuid, uuid_player, game_data["tah"])
+            if control:
+                if("draw" in data):
+                    if(game_data["end"] is None):
+                        if(game_data["draw_to"] == ""):
+                            opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                            data["draw_to"] = opponent_uuid
+                            game_data["draw_to"] = opponent_uuid
+                        else:
+                            if(data.get("draw") == True):
+                                game_data["end"] = await self.get_end_dict(uuid_player, "draw", "agreed", uuid, game_data["friendly"])
+                                opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                                await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "draw", game_data["friendly"])
+                            else:
+                                game_data["draw_to"] = ""
+                                data["draw"] = False
+                else:
+                    if not game_data["friendly"]:
+                        spend_time = int(time.time() - game_data["start_time"])
+                        game_data["timer"][game_data["tah"]]["time"] -= spend_time
+                        if(game_data["timer"][game_data["tah"]]["time"] <= 0):
+                            game_data["end"] = await self.get_end_dict(uuid_player, "lose", "timeout", uuid, game_data["friendly"])
+                            opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                            await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", False)
+                        else:
+                            game_data["start_time"] = time.time()
+                        data["time"] = game_data["timer"][game_data["tah"]]["time"]
+                    data["symbol"] = game_data["tah"]
+                    if(game_data["end"] is None):
+                        await self.save_board(data, uuid)
+                        board = await self.get_list_board(uuid)
+                    win_probality = await self.get_winning_board(board, 5, game_data["tah"])
+                    if win_probality is not None:
+                        game_data["end"] = await self.get_end_dict(uuid_player, "win", "symbol", uuid, game_data["friendly"])
+                        opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                        await self.write_result_to_db(uuid, uuid_player,  opponent_uuid, "win", game_data["friendly"])
+                        await sync_to_async(self.save_win_board)(uuid, win_probality)
+                        game_data["end"]["win_board"] = win_probality
+                    is_draw = await self.is_draw_board(uuid)
+                    if is_draw and game_data["end"] is None:
+                        game_data["end"] = await self.get_end_dict(uuid_player, "draw", "draw", uuid, game_data["friendly"])
+                        opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                        await self.write_result_to_db(uuid, uuid_player, opponent_uuid, "draw", game_data["friendly"])
+                    if game_data["tah"] == "X":
+                        game_data["tah"] = "O"
+                    else:
+                        game_data["tah"] = "X"
+            else:
+                pass
+        data["end"] = game_data["end"]
+        await self.channel_layer.group_send(
+            f"game_{uuid}",
+            {
+                "type": "game_update",
+                "message": json.dumps(data)
+            }
+        )
 
 
     @sync_to_async
@@ -203,7 +206,6 @@ class GameConsumer(AsyncWebsocketConsumer):
     async def game_update(self, event):
         message = event["message"]
         await self.send(text_data=message)
-
 
     async def get_winning_board(self, board: List[List[str]], winning: int, turn: str) -> Optional[List[List[str]]]:
         """     
@@ -484,7 +486,6 @@ class GameConsumer(AsyncWebsocketConsumer):
             user.elo = new_elo
             user.save()
             elodifference = new_elo - game_status.elo
-            print(elodifference)
             return math.ceil(elodifference)
 
         if(not friendly):
@@ -556,9 +557,8 @@ class GameConsumer(AsyncWebsocketConsumer):
             players.append(gamestatus["player"]["uuid"])
         return uuid_user in players or uuid_user == self.data[uuid_game]["anonymous"]
 
-    @sync_to_async
     def create_new_game(self, uuid_user, uuid_game, friendly, anonymous):
-        opponent = self.get_opponent(uuid_user, uuid_game)
+        opponent = self.get_opponent_sync(uuid_user, uuid_game, False)
         if(friendly):
             game_type = "friendly"
             anonymousToken = anonymous
@@ -606,4 +606,12 @@ class GameConsumer(AsyncWebsocketConsumer):
             serializer_gamestatus.save()
         else:
             game_instance.delete()
-        return {"uuid": game_instance.uuid}
+        return str(game_instance.uuid)
+
+    def save_win_board(self, game_uuid, win_probality):
+        for i in range(len(win_probality)):
+            for j in range(len(win_probality[0])):
+                if(win_probality[i][j] == "Xw" or win_probality[i][j] == "Ow"):
+                    board = Board.objects.filter(game=game_uuid, row=i, column=j).first()
+                    board.symbol = win_probality[i][j]
+                    board.save()
