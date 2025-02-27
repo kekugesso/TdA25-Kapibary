@@ -44,6 +44,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         gamedata["board"] = matrix
         if(game.anonymousToken is not None):
             self.data[uuid]["anonymous"] = game.anonymousToken
+        gamedata["type"] = "initData"
         await self.send(text_data=json.dumps(gamedata, default=str))
 
     async def disconnect(self, close_code):
@@ -62,12 +63,14 @@ class GameConsumer(AsyncWebsocketConsumer):
             uuid_player = game_data["anonymous"]
         if(data.get("surrender") == True):
             if(await self.control_if_player(uuid, uuid_player)):
+                data["type"] = "surrender"
                 game_data["end"] = await self.get_end_dict(uuid_player, "lose", "surrender", uuid, game_data["friendly"])
                 opponent_uuid = await self.get_opponent(uuid_player, uuid)
                 await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", game_data["friendly"])
         elif("rematch" in data):
             if(await self.control_if_player(uuid, uuid_player)):
                 if(game_data["end"] is not None):
+                    data["type"] = "rematch"
                     if(game_data["rematch_to"] == ""):
                         opponent_uuid = await self.get_opponent(uuid_player, uuid)
                         data["rematch_to"] = opponent_uuid
@@ -83,6 +86,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             if control:
                 if("draw" in data):
                     if(game_data["end"] is None):
+                        data["type"] = "draw"
                         if(game_data["draw_to"] == ""):
                             opponent_uuid = await self.get_opponent(uuid_player, uuid)
                             data["draw_to"] = opponent_uuid
@@ -96,6 +100,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                                 game_data["draw_to"] = ""
                                 data["draw"] = False
                 else:
+                    data["type"] = "new_symbol"
                     if not game_data["friendly"]:
                         spend_time = int(time.time() - game_data["start_time"])
                         game_data["timer"][game_data["tah"]]["time"] -= spend_time
@@ -577,35 +582,58 @@ class GameConsumer(AsyncWebsocketConsumer):
         if(uuid_user == self.data[uuid_game]["anonymous"] or opponent == "anonymous"):
             if(uuid_user == self.data[uuid_game]["anonymous"]):
                 user = CustomUser.objects.get(uuid=opponent)
+                game_status1_symbol = GameStatus.objects.filter(player=opponent).last().symbol
             else:
                 user = CustomUser.objects.get(uuid=uuid_user)
+                game_status1_symbol = GameStatus.objects.filter(player=uuid_user).last().symbol
+            if(game_status1_symbol == "X"):
+                symbol = "O"
+            else:
+                symbol = "X"
+            gamestatus_data = {
+                "player": user.uuid,
+                "result": "unknown",
+                "symbol": symbol,
+                "game": game_instance.uuid,  # Use instance instead of raw data
+                "elo": user.elo
+            }
+            serializer_gamestatus = GameStatusSerializerCreate(data=gamestatus_data)
+            if serializer_gamestatus.is_valid():
+                serializer_gamestatus.save()
+            else:
+                game_instance.delete()
         else:
             user1 = CustomUser.objects.get(uuid=uuid_user)
+            game_status1_symbol = GameStatus.objects.filter(player=uuid_user).last().symbol
             user2 = CustomUser.objects.get(uuid=opponent)
-        gamestatus_data1 = {
-            "player": user1.uuid,
-            "result": "unknown",
-            "symbol": "X",
-            "game": game_instance.uuid,  # Use instance instead of raw data
-            "elo": user1.elo
-        }
-        gamestatus_data2 = {
-            "player": user2.uuid,
-            "result": "unknown",
-            "symbol": "O",
-            "game": game_instance.uuid,  # Use instance instead of raw data
-            "elo": user2.elo
-        }
-        serializer_gamestatus = GameStatusSerializerCreate(data=gamestatus_data1)
-        if serializer_gamestatus.is_valid():
-            serializer_gamestatus.save()
-        else:
-            game_instance.delete()
-        serializer_gamestatus = GameStatusSerializerCreate(data=gamestatus_data2)
-        if serializer_gamestatus.is_valid():
-            serializer_gamestatus.save()
-        else:
-            game_instance.delete()
+            if(game_status1_symbol == "X"):
+                game_status2_symbol = "O"
+            else:
+                game_status2_symbol = "X"
+            gamestatus_data1 = {
+                "player": user1.uuid,
+                "result": "unknown",
+                "symbol": game_status2_symbol,
+                "game": game_instance.uuid,  # Use instance instead of raw data
+                "elo": user1.elo
+            }
+            gamestatus_data2 = {
+                "player": user2.uuid,
+                "result": "unknown",
+                "symbol": game_status1_symbol,
+                "game": game_instance.uuid,  # Use instance instead of raw data
+                "elo": user2.elo
+            }
+            serializer_gamestatus = GameStatusSerializerCreate(data=gamestatus_data1)
+            if serializer_gamestatus.is_valid():
+                serializer_gamestatus.save()
+            else:
+                game_instance.delete()
+            serializer_gamestatus = GameStatusSerializerCreate(data=gamestatus_data2)
+            if serializer_gamestatus.is_valid():
+                serializer_gamestatus.save()
+            else:
+                game_instance.delete()
         return str(game_instance.uuid)
 
     def save_win_board(self, game_uuid, win_probality):
@@ -615,3 +643,6 @@ class GameConsumer(AsyncWebsocketConsumer):
                     board = Board.objects.filter(game=game_uuid, row=i, column=j).first()
                     board.symbol = win_probality[i][j]
                     board.save()
+
+    def if_cell_exist(self, game_uuid, row, column):
+        return Board.objects.filter(game=game_uuid, row=row, column=column).exists()
