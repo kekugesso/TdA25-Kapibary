@@ -16,7 +16,7 @@ export default function MultiplayerLobby({
   searchParams: Promise<{ game?: Promise<string> }>;
 }) {
   useEffect(() => {
-    async function loadUuid() {
+    async function loadGameCode() {
       try {
         const resolvedParams = await searchParams; // Resolve the params promise
         const resolvedGameCode = await resolvedParams.game; // Resolve the nested game promise
@@ -25,7 +25,7 @@ export default function MultiplayerLobby({
         console.error("Failed to load uuid:", error);
       }
     }
-    loadUuid();
+    loadGameCode();
   }, [searchParams]);
 
   const [gameCode, setGameCode] = useState<number | undefined>(undefined);
@@ -71,7 +71,7 @@ export default function MultiplayerLobby({
     });
   };
   useEffect(() => {
-    if (gameCode) joinGame(gameCode);
+    if (gameCode && !createGameModal && !inviteGameModal) joinGame(gameCode);
   }, [gameCode]);
 
   const joinFreePlayGameMutation = useMutation({
@@ -84,12 +84,10 @@ export default function MultiplayerLobby({
             Authorization: `Token ${getCookie("authToken")}`,
           }),
         },
-        body: JSON.stringify({
-          gameCode: code,
-        } as { gameCode: number }),
+        body: JSON.stringify({ code } as { code: number }),
       });
       if (!res.ok) throw new Error((await res.json()).message);
-      return (await res.json()) as { uuid: string; anonymusToken?: string };
+      return (await res.json()) as { uuid: string; authtoken?: string };
     },
     onError: (error: Error) => error,
   });
@@ -115,7 +113,7 @@ export default function MultiplayerLobby({
         });
       },
       onSuccess: (data) => {
-        if (data.anonymusToken) setCookie("authToken", data.anonymusToken);
+        if (data.authtoken) setCookie("authToken", data.authtoken);
         localStorage.setItem("multiplayerGame", data.uuid);
         router.push(`/multiplayer/${data.uuid}`);
       },
