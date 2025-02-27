@@ -782,7 +782,8 @@ class TopView(APIView):
         
         serializer = CustomUserSerializerView(paginated_users, many=True)
         result = [count_results(user["uuid"], user) for user in serializer.data]
-        result = [count_position(user["uuid"], user) for user in serializer.data]
+        if(len(serializer.data) == 1):
+            result = [count_position(user["uuid"], user) for user in serializer.data]
 
         return paginator.get_paginated_response(result)
 
