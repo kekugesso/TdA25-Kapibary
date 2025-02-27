@@ -20,23 +20,6 @@ type SmallUser = {
   elo: number;
 };
 
-enum GameResult {
-  UNKNOWN = "unknown",
-  WIN = "win",
-  LOSE = "lose",
-  DRAW = "draw",
-}
-
-type GameHistory = {
-  game: string;
-  createdAt: string;
-  elo: number;
-  elo_change: number;
-  symbol: "X" | "O";
-  result: GameResult;
-  opponent: SmallUser;
-};
-
 type UserSettings = {
   username: string;
   password: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { GameHistory } from "@/types/auth/user";
+import { GameHistory } from "@/types/multiplayer/GameHistory";
 import GraphPopover from "./GameHistoryGraphPopover";
 import { useTheme } from "next-themes";
 

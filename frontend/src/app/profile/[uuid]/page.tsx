@@ -5,7 +5,8 @@ import { useErrorModal } from "@/components/core/ErrorModalProvider";
 import Loading from "@/components/core/Loading";
 import GameHistoryGraph from "@/components/profile/GameHistoryGraph";
 import GameHistoryTable from "@/components/profile/GameHistoryTable";
-import { GameHistory, User } from "@/types/auth/user";
+import { User } from "@/types/auth/user";
+import { GameHistory } from "@/types/multiplayer/GameHistory";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
@@ -33,7 +34,6 @@ export default function Profile({
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [gameHistory, setGameHistory] = useState<GameHistory[] | null>(null);
-  window.setGameHistory = setGameHistory;
   const { loading: authLoading, user: authUser } = useAuth();
   const { displayError } = useErrorModal();
   const router = useRouter();

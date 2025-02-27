@@ -1,6 +1,8 @@
-import { GameHistory, GameResult, User } from "@/types/auth/user";
+import { User } from "@/types/auth/user";
 import { Oicon, Xicon } from "../game/Icons";
 import Link from "next/link";
+import { GameHistory } from "@/types/multiplayer/GameHistory";
+import { GameResult } from "@/types/multiplayer/GameResult";
 
 export default function GameHistoryTable({
   userData,
@@ -49,8 +51,8 @@ export default function GameHistoryTable({
       <div className="divide-y max-h-[295px] w-full h-full overflow-y-auto">
         {gameHistory.map((game) => (
           <Link
+            key={`game-history-table-${game.game}`}
             href={`/multiplayer/${game.game}`}
-            key={game.game}
             className="grid grid-cols-[10%,35%,10%,35%,10%] hover:bg-gray-100 dark:hover:bg-gray-800 ease-in-out transition-all"
           >
             <div className="flex flex-center">{formatDate(game.createdAt)}</div>
