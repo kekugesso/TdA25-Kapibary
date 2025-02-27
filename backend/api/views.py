@@ -6,6 +6,8 @@ import re
 from datetime import timedelta
 from django.utils import timezone
 from django.forms.models import model_to_dict
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -14,12 +16,13 @@ from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import Game, Board, CustomUser, GameStatus, QueryUsers
 from .serializers import GameSerializer, BoardSerializer, CustomUserSerializerView, CustomUserSerializerCreate, GameStatusSerializerCreate, GameSerializerMultiplayer, GameStatusForUserSerializerView, QueryUsersSerializerView, QueryUsersSerializerCreate, GameSerializerFreeplayView
+from .filters import UserFilter
 
 
 class CustomPagination(PageNumberPagination):
     page_size = 100 
     page_size_query_param = 'page_size'
-    max_page_size = 100
+    max_page_size = 500
 
 
 class AllUsersView(APIView):
@@ -30,6 +33,9 @@ class AllUsersView(APIView):
         get: retrieves all users
     """
     pagination_class = CustomPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = UserFilter
+    search_fields = ["username"]
 
     def get(self, request):
         """
@@ -38,8 +44,11 @@ class AllUsersView(APIView):
             200: JSON with all users
         """
         users = CustomUser.objects.filter(is_superuser=False)
+        user_filter = UserFilter(request.GET, queryset=users)
+        filtered_users = user_filter.qs
         paginator = self.pagination_class()
-        paginated_users = paginator.paginate_queryset(users, request)
+        paginated_users = paginator.paginate_queryset(filtered_users, request)
+        
 
         serializer = CustomUserSerializerView(paginated_users, many=True)
         result = [count_results(user["uuid"], user) for user in serializer.data]
@@ -758,6 +767,10 @@ class RatingView(APIView):
 
 
 class TopView(APIView):
+    pagination_class = CustomPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = UserFilter
+    search_fields = ["username"]
     def get(self, request):
         """
         retrieves all users
@@ -765,9 +778,11 @@ class TopView(APIView):
             200: JSON with all users
         """
         users = CustomUser.objects.filter(is_superuser=False, is_banned=False).order_by('-elo')
+        user_filter = UserFilter(request.GET, queryset=users)
+        filtered_users = user_filter.qs
         paginator = self.pagination_class()
-        paginated_users = paginator.paginate_queryset(users, request)
-
+        paginated_users = paginator.paginate_queryset(filtered_users, request)
+        
         serializer = CustomUserSerializerView(paginated_users, many=True)
         result = [count_results(user["uuid"], user) for user in serializer.data]
 
