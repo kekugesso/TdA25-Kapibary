@@ -67,7 +67,8 @@ class Symbol(models.TextChoices):
     """Possible symbols"""
     X = "X"
     O = "O"
-
+    XW = "Xw"
+    OW = "Ow"
 
 class GameType(models.TextChoices):
     """Possible game types"""
@@ -130,7 +131,7 @@ class Board(models.Model):
         default=uuid.uuid4, editable=False, primary_key=True)
     row = models.IntegerField(null=False)
     column = models.IntegerField(null=False)
-    symbol = models.CharField(choices=Symbol.choices, max_length=1, null=False)
+    symbol = models.CharField(choices=Symbol.choices, max_length=2, null=False)
     game = models.ForeignKey('Game',
                              on_delete=models.CASCADE,
                              related_name='board')
@@ -166,7 +167,7 @@ class GameStatus(models.Model):
     elo = models.IntegerField(null=False)
     result = models.CharField(choices=GameResult.choices, max_length=20,
                               default=GameResult.UNKNOWN, null=False)
-    symbol = models.CharField(choices=Symbol.choices, max_length=1, null=False)
+    symbol = models.CharField(choices=Symbol.choices, max_length=2, null=False)
     createdAt = models.DateTimeField(null=False, auto_now_add=True)
     elodifference = models.IntegerField(null=True)
 

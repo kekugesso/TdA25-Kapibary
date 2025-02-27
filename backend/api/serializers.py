@@ -48,7 +48,7 @@ class CustomUserSerializerViewGameStatus(serializers.ModelSerializer):
             [type]: [description]
         """
         model = CustomUser
-        fields = ['uuid', 'username']
+        fields = ['uuid', 'username', 'avatar']
 
 
 class BoardSerializer(serializers.ModelSerializer):

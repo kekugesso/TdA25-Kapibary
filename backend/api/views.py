@@ -545,6 +545,8 @@ class FreeplayGameView(APIView):
         return Response(result, status=200)
         
     def post(self, request):
+        if(GameStatus.objects.filter(player=request.user.uuid).last().result == "unknown"):
+            return Response({"message": "You are already in a game"}, status=400)
         data = {
             "name": ''.join(random.choices(string.ascii_letters, k=10)),
             "gameType": "friendly",
@@ -702,7 +704,7 @@ class RatingView(APIView):
         else:
             return Response({"message": "None"}, status=404)
     def post(self, request):
-        list = QueryUsers.objects.all().order_by('-user__elo')
+        list = QueryUsers.objects.all().order_by('user__elo')
         result = []
         serializer = QueryUsersSerializerView(list, many=True)
         query_list = serializer.data
@@ -785,7 +787,8 @@ class TopView(APIView):
         
         serializer = CustomUserSerializerView(paginated_users, many=True)
         result = [count_results(user["uuid"], user) for user in serializer.data]
-        result = [count_position(user["uuid"], user) for user in serializer.data]
+        if(len(serializer.data) == 1):
+            result = [count_position(user["uuid"], user) for user in serializer.data]
 
         return paginator.get_paginated_response(result)
 
