@@ -607,12 +607,14 @@ def count_results(uuid, data):
     count_lose = 0
     count_draw = 0
     for game in games:
-        if game.result == "win":
-            count_win += 1
-        elif game.result == "lose":
-            count_lose += 1
-        elif game.result == "draw":
-            count_draw += 1
+        hello = Game.objects.get(uuid=game.game)
+        if(hello.gameType == "rating"):
+            if game.result == "win":
+                count_win += 1
+            elif game.result == "lose":
+                count_lose += 1
+            elif game.result == "draw":
+                count_draw += 1
     result["wins"] = count_win
     result["losses"] = count_lose
     result["draws"] = count_draw
