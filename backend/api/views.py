@@ -119,22 +119,31 @@ class UserView(APIView):
             user = CustomUser.objects.get(uuid=uuid1)
         except Exception as e:
             return Response({"message": "Neexistujicí uživatel."}, status=404)
-        if(user.check_password(request.data["password"])):
+        if(request.user.is_authenticated and request.user.is_superuser):
             data = request.data
-            if(data.get("new_password") is not None and data.get("new_password") != ""):
-                if(is_valid_password(data["new_password"])):
-                    data["password"] = data["new_password"]
-                else:
-                    return Response({"password": "Heslo nesplňuje podminky"}, status=400)
-            serializer = CustomUserSerializerCreate(user, data=data)
-            if not serializer.is_valid():
-                return Response(serializer.errors, status=400)
-            user = serializer.save()
-            serializer = CustomUserSerializerView(user)
-            result = count_results(user.uuid, serializer.data)
-            return Response(result)
+            if(data.get("new_elo") is not None):
+                user.elo = data["new_elo"]
+            if(data.get("is_banned") is not None):
+                user.is_banned = data["is_banned"]
+            user.save()
+            return Response(status=200)
         else:
-            return Response({"password": "Spatné heslo."}, status=401)
+            if(user.check_password(request.data["password"])):
+                data = request.data
+                if(data.get("new_password") is not None and data.get("new_password") != ""):
+                    if(is_valid_password(data["new_password"])):
+                        data["password"] = data["new_password"]
+                    else:
+                        return Response({"password": "Heslo nesplňuje podminky"}, status=400)
+                serializer = CustomUserSerializerCreate(user, data=data)
+                if not serializer.is_valid():
+                    return Response(serializer.errors, status=400)
+                user = serializer.save()
+                serializer = CustomUserSerializerView(user)
+                result = count_results(user.uuid, serializer.data)
+                return Response(result)
+            else:
+                return Response({"password": "Spatné heslo."}, status=401)
 
 class AllGamesView(APIView):
     """
@@ -779,3 +788,21 @@ def is_valid_password(password):
         return False
 
     return True
+
+
+class SearchUserView(APIView):
+    def post(self, request):
+        data = request.data
+        user = CustomUser.objects.filter(username=data["username"]).first()
+        if user is None:
+            return Response(None, status=200)
+        
+        serializer = CustomUserSerializerView(user)
+        result = count_results(user.uuid, serializer.data)
+        if(not user.is_banned and not user.is_superuser):
+            users = CustomUser.objects.filter(is_superuser=False, is_banned=False).order_by('-elo')
+            for i in range(len(users)):
+                if users[i].username == data["username"]:
+                    result["position"] = i+1
+                    break
+        return Response(result, status=200)

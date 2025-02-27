@@ -1,3 +1,5 @@
+import random
+import string
 import math
 from typing import List, Optional
 from copy import deepcopy
@@ -5,7 +7,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async
 from rest_framework.authtoken.models import Token
 from .models import Game, GameStatus, Board, CustomUser
-from .serializers import BoardSerializer, GameStatusSerializerView, GameSerializerMultiplayer, GameStatusForUserSerializerView
+from .serializers import BoardSerializer, GameStatusSerializerView, GameSerializerMultiplayer, GameStatusForUserSerializerView, GameStatusSerializerCreate, GameSerializer
 import json
 import time
 
@@ -58,6 +60,18 @@ class GameConsumer(AsyncWebsocketConsumer):
             uuid_player = await self.get_token(token)
         else:
             uuid_player = game_data["anonymous"]
+        if("rematch" in data):
+            if(await self.control_if_player(uuid, uuid_player)):
+                if(game_data["end"] is not None):
+                    if(game_data["rematch_to"] == ""):
+                        opponent_uuid = await self.get_opponent(uuid_player, uuid, game_data["friendly"])
+                        data["to"] = opponent_uuid
+                        game_data["rematch_to"] = opponent_uuid
+                    else:
+                        if(data.get("rematch") == False):
+                            game_data["rematch_to"] = ""
+                        else:
+                            data["rematch"] = await self.create_new_game(uuid_player, uuid, game_data["friendly"], game_data["anonymous"])
         control = await self.control_player(uuid, uuid_player, game_data["tah"])
         if control:
             if(data.get("surrender") == True):
@@ -78,17 +92,6 @@ class GameConsumer(AsyncWebsocketConsumer):
                         else:
                             game_data["draw_to"] = ""
                             data["remiza"] = False
-            elif("rematch" in data):
-                if(game_data["end"] is not None):
-                    if(game_data["rematch_to"] == ""):
-                        opponent_uuid = await self.get_opponent(uuid_player, uuid, game_data["friendly"])
-                        data["to"] = opponent_uuid
-                        game_data["rematch_to"] = opponent_uuid
-                    else:
-                        if(data.get("rematch") == False):
-                            game_data["rematch_to"] = ""
-                        else:
-                            pass
             else:
                 if not game_data["friendly"]:
                     spend_time = int(time.time() - game_data["start_time"])
@@ -354,7 +357,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         return resultjson
 
     @sync_to_async
-    def get_opponent(self, uuid_player, uuid_game, friendly):
+    def get_opponent(self, uuid_player, uuid_game):
         game = Game.objects.get(uuid=uuid_game)
         data = GameSerializerMultiplayer(game).data
         gameStatus = data["game_status"]
@@ -451,7 +454,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             ea = 1/(1+10**((elo_opponent-game_status.elo)/400))
             saea = sa - ea
             if(count_draw == 0 and count_lose == 0 and count_win == 0):
-                podilher = 0
+                podilher = 0.5
             else:
                 podilher = (count_win+count_draw)/(count_win+count_lose+count_draw)
             new_elo = float(game_status.elo) + 40*(saea*(1 + 0.5*(0.5-podilher)))
@@ -521,5 +524,64 @@ class GameConsumer(AsyncWebsocketConsumer):
                     gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid).first()
                     gamestatus.result = "lose"
                     gamestatus.save()
-    
-        
+
+    @sync_to_async
+    def control_if_player(self, uuid_game, uuid_user):
+        gamestatus = GameStatus.objects.filter(game=uuid_game)
+        serializer = GameStatusSerializerView(gamestatus, many=True)
+        players = []
+        for gamestatus in serializer.data:
+            players.append(gamestatus["player"]["uuid"])
+        return uuid_user in players or uuid_user == self.data[uuid_game]["anonymous"]
+
+    @sync_to_async
+    def create_new_game(self, uuid_user, uuid_game, friendly, anonymous):
+        opponent = self.get_opponent(uuid_user, uuid_game)
+        if(friendly):
+            game_type = "friendly"
+            anonymousToken = anonymous
+        else:
+            game_type = "rating"
+            anonymousToken = None 
+        data = {
+            "name": ''.join(random.choices(string.ascii_letters, k=10)),
+            "gameType": game_type,
+            "anonymousToken": anonymousToken
+        }
+
+        serializer = GameSerializer(data=data)
+        if serializer.is_valid():
+            game_instance = serializer.save()  # Save and keep reference
+        if(uuid_user == self.data[uuid_game]["anonymous"] or opponent == "anonymous"):
+            if(uuid_user == self.data[uuid_game]["anonymous"]):
+                user = CustomUser.objects.get(uuid=opponent)
+            else:
+                user = CustomUser.objects.get(uuid=uuid_user)
+        else:
+            user1 = CustomUser.objects.get(uuid=uuid_user)
+            user2 = CustomUser.objects.get(uuid=opponent)
+        gamestatus_data1 = {
+            "player": user1.uuid,
+            "result": "unknown",
+            "symbol": "X",
+            "game": game_instance.uuid,  # Use instance instead of raw data
+            "elo": user1.elo
+        }
+        gamestatus_data2 = {
+            "player": user2.uuid,
+            "result": "unknown",
+            "symbol": "O",
+            "game": game_instance.uuid,  # Use instance instead of raw data
+            "elo": user2.elo
+        }
+        serializer_gamestatus = GameStatusSerializerCreate(data=gamestatus_data1)
+        if serializer_gamestatus.is_valid():
+            serializer_gamestatus.save()
+        else:
+            game_instance.delete()
+        serializer_gamestatus = GameStatusSerializerCreate(data=gamestatus_data2)
+        if serializer_gamestatus.is_valid():
+            serializer_gamestatus.save()
+        else:
+            game_instance.delete()
+        return {"uuid": game_instance.uuid}
