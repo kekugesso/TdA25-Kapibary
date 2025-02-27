@@ -134,6 +134,20 @@ export default function MultiplayerLobby({
     onError: (error: Error) => error,
   });
 
+  const dequeueGameMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/query", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Token ${getCookie("authToken")}`,
+        },
+      });
+      if (res.status > 250) throw new Error((await res.json()).message);
+      return res;
+    },
+    onError: (error: Error) => error,
+  });
+
   const findGame = () => {
     queueGameMutation.mutate(undefined, {
       onError: (error) => {
@@ -206,7 +220,10 @@ export default function MultiplayerLobby({
         />
         <GameFindModal
           open={findingGame}
-          cancelAction={() => setFindingGame(false)}
+          cancelAction={() => {
+            dequeueGameMutation.mutate();
+            setFindingGame(false);
+          }}
         />
         <GameJoinModal
           open={joinGameModal}
