@@ -459,6 +459,8 @@ class GameConsumer(AsyncWebsocketConsumer):
             else:
                 podilher = (count_win+count_draw)/(count_win+count_lose+count_draw)
             new_elo = float(game_status.elo) + 40*(saea*(1 + 0.5*(0.5-podilher)))
+            if(new_elo < 0):
+                new_elo = 0
             user = CustomUser.objects.get(uuid=uuid_player)
             user.elo = new_elo
             user.save()
