@@ -112,7 +112,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                     game_data["end"] = await self.get_end_dict(uuid_player, "win", "symbol", uuid, game_data["friendly"])
                     opponent_uuid = await self.get_opponent(uuid_player, uuid)
                     await self.write_result_to_db(uuid, uuid_player,  opponent_uuid, "win", game_data["friendly"])
-                    data["win_board"] = win_probality
+                    game_data["win_board"] = win_probality
                 is_draw = await self.is_draw_board(uuid)
                 if is_draw and game_data["end"] is None:
                     game_data["end"] = await self.get_end_dict(uuid_player, "draw", "draw", uuid, game_data["friendly"])
