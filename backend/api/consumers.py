@@ -52,6 +52,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_discard(f"game_{uuid}", self.channel_name)
 
     async def receive(self, text_data):
+        send = True
         uuid = self.scope["url_route"]["kwargs"]["uuid"]
         data = json.loads(text_data)
         game_data = self.data[uuid]
@@ -67,6 +68,8 @@ class GameConsumer(AsyncWebsocketConsumer):
                 game_data["end"] = await self.get_end_dict(uuid_player, "lose", "surrender", uuid, game_data["friendly"])
                 opponent_uuid = await self.get_opponent(uuid_player, uuid)
                 await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", game_data["friendly"])
+            else:
+                send = False
         elif("rematch" in data):
             if(await self.control_if_player(uuid, uuid_player)):
                 if(game_data["end"] is not None):
@@ -81,6 +84,10 @@ class GameConsumer(AsyncWebsocketConsumer):
                         else:
                             if(uuid_player == game_data["rematch_to"]):
                                 data["new_game"] = await sync_to_async(self.create_new_game)(uuid_player, uuid, game_data["friendly"], game_data["anonymous"])
+                else:
+                    send = False
+            else:
+                send = False
         else:
             control = await self.control_player(uuid, uuid_player, game_data["tah"])
             if control:
@@ -99,7 +106,9 @@ class GameConsumer(AsyncWebsocketConsumer):
                             else:
                                 game_data["draw_to"] = ""
                                 data["draw"] = False
-                else:
+                    else:
+                        send = False
+                elif(data.get("row") is not None and data.get("column") is not None and not await sync_to_async(self.if_cell_exist)(uuid, data["row"], data["column"])):
                     data["type"] = "new_symbol"
                     if not game_data["friendly"]:
                         spend_time = int(time.time() - game_data["start_time"])
@@ -131,16 +140,21 @@ class GameConsumer(AsyncWebsocketConsumer):
                         game_data["tah"] = "O"
                     else:
                         game_data["tah"] = "X"
+                else:
+                    send = False
             else:
-                pass
-        data["end"] = game_data["end"]
-        await self.channel_layer.group_send(
-            f"game_{uuid}",
-            {
-                "type": "game_update",
-                "message": json.dumps(data)
-            }
-        )
+                send = False
+        if(send):
+            data["end"] = game_data["end"]
+            await self.channel_layer.group_send(
+                f"game_{uuid}",
+                {
+                    "type": "game_update",
+                    "message": json.dumps(data)
+                }
+            )
+        else:
+            pass
 
 
     @sync_to_async
@@ -192,12 +206,12 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     async def get_user_from_token(self):
         headers = dict(deepcopy(self.scope["headers"]))
-        auth_header = headers.get(b"authorization", b"").decode("utf-8")
+        cookies = {cookie.split("=")[0]: cookie.split("=")[1] 
+                   for cookie in headers.get(b"cookie", b"").decode().split("; ") if "=" in cookie}
 
-        if not auth_header.startswith("Token "):
-            return None
+        auth_token = cookies.get("authToken", None)
 
-        return auth_header.split(" ")[1]
+        return auth_token
 
 
     @sync_to_async
