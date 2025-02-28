@@ -272,7 +272,7 @@ export default function ProfileSettings() {
             alt="Profile"
             width="300"
             height="300"
-            className="w-full h-full rounded-lg bg-gray-100 dark:bg-white-dark object-cover"
+            className="w-[350px] h-[350px] rounded-lg bg-gray-100 dark:bg-white-dark object-cover"
             onClick={() => setIsDraging(true)}
           />
           <Image

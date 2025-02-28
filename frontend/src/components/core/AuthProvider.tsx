@@ -82,12 +82,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const loginAnonymus = (token: string) => {
+    console.log("Logging in as anonymus");
     setIsAnonymus(true);
     setCookie("authToken", token);
+    setCookie("anonymus", "true");
   };
   const logoutAnonymus = () => {
+    console.log("Logging out as anonymus");
     setIsAnonymus(false);
     deleteCookie("authToken");
+    deleteCookie("anonymus");
   };
 
   const registerMutation = RegisterMutation({
@@ -122,7 +126,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           Authorization: `Token ${getCookie("authToken")}`,
         },
       }).then(async (res) => {
-        if (isAnonymus) return;
         if (res.status == 200) return (await res.json()) as User;
         deleteCookie("authToken");
         setUser(null);
@@ -154,6 +157,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!token) throw Error("You are not logged in");
       await logoutMutation.mutateAsync(token);
     } catch (error) {
+      checkQuery.refetch();
       return error as Error;
     }
   };
@@ -173,7 +177,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else setLoading(false);
     };
 
-    if (!isAnonymus) initializeAuth();
+    if (getCookie("anonymus")) {
+      setIsAnonymus(true);
+      setLoading(false);
+    } else if (!isAnonymus) initializeAuth();
   }, [
     isAnonymus,
     check,

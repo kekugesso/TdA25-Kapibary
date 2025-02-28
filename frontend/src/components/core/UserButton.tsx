@@ -30,7 +30,9 @@ export default function UserButton({ center }: { center: boolean }) {
             className="rounded-full invert mr-1"
             loading="eager"
           />
-          {user && isLogged ? user.username : "Anonymus"}
+          <span className="truncate max-w-[150px]">
+            {user && isLogged ? user.username : "Anonymus"}
+          </span>
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -39,7 +41,7 @@ export default function UserButton({ center }: { center: boolean }) {
         className="bg-white border border-black-light dark:bg-black-light p-2 rounded-md text-center z-40"
       >
         <div className="flex flex-col space-y-3 text-lg">
-          {!loading ? (
+          {loading ? (
             <Loading height="min-h-8" iconSize="h-5 w-5" />
           ) : isLogged ? (
             <>

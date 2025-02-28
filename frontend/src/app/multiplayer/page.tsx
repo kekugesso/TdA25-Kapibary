@@ -31,7 +31,7 @@ export default function MultiplayerLobby({
 
   const [gameCode, setGameCode] = useState<number | undefined>(undefined);
   const router = useRouter();
-  const { loginAnonymus } = useAuth();
+  const { loginAnonymus, isLogged } = useAuth();
   const { displayMessage, displayError } = useErrorModal();
   const [findingGame, setFindingGame] = useState(false);
   const [joinGameModal, setJoinGameModal] = useState(false);
@@ -110,6 +110,7 @@ export default function MultiplayerLobby({
     joinFreePlayGameMutation.mutate(code, {
       onError: (error) => {
         setJoinGameModal(false);
+        console.error(error);
         displayError(error, {
           overrideButtonMessage: "Zavřít",
           disableDefaultButtonAction: true,
@@ -117,7 +118,7 @@ export default function MultiplayerLobby({
         });
       },
       onSuccess: (data) => {
-        if (data.authtoken) loginAnonymus(data.authtoken);
+        if (!isLogged && data.authtoken) loginAnonymus(data.authtoken);
         localStorage.setItem("multiplayerGame", data.uuid);
         router.push(`/multiplayer/${data.uuid}`);
       },
@@ -132,6 +133,9 @@ export default function MultiplayerLobby({
           Authorization: `Token ${getCookie("authToken")}`,
         },
       });
+      if (res.status === 400) return res;
+      if (res.status === 401)
+        throw new Error("Pro matchmaking se musíš přihlásit");
       if (res.status > 250) throw new Error((await res.json()).message);
       return res;
     },
@@ -176,7 +180,7 @@ export default function MultiplayerLobby({
         },
       });
       console.log(res);
-      if (res.status === 404) return;
+      if (res.status === 404) return null;
       if (res.status === 200)
         router.push(`/multiplayer/${(await res.json()).uuid}`);
       return null;

@@ -5,13 +5,13 @@ import { useErrorModal } from "@/components/core/ErrorModalProvider";
 import { BoardType } from "@/types/board/BoardType";
 import { MultiplayerGame } from "@/types/multiplayer/game";
 import { GameEnd, SymbolMessage } from "@/types/multiplayer/GameEnd";
+import GameEndModal from "@/components/multiplayer/game/GameEndModal";
 import {
   GameDraw,
   GameMove,
   GameRematch,
   GameSurrender,
   GameWantDraw,
-  GameWantRematch,
   GameWantSurrender,
   GetGameMove,
 } from "@/types/multiplayer/GameEvents";
@@ -25,6 +25,7 @@ import React, {
   useState,
 } from "react";
 import { MessageType } from "@/types/multiplayer/MessageType";
+import GameWantModal from "./GameWantModal";
 
 export interface GameManagerContextProps {
   isLoading: boolean;
@@ -42,6 +43,7 @@ export interface GameManagerContextProps {
   wantRematch: boolean;
   wantDraw: boolean;
 
+  turn: "X" | "O" | null;
   userSymbol: "X" | "O" | null;
   userTime: number | null;
   opponentTime: number | null;
@@ -60,13 +62,13 @@ export function GameManager({
     user,
     isLogged,
     loading: authLoading,
-
+    isAnonymus,
     logoutAnonymus,
   } = useAuth();
   const { displayMessage } = useErrorModal();
 
   const websocketRef = useRef<WebSocket | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
 
   const [userSymbol, setUserSymbol] = useState<"X" | "O" | null>(null);
@@ -76,6 +78,7 @@ export function GameManager({
   const [winData, setWinData] = useState<SymbolMessage | null>(null);
   const [wantRematch, setWantRematch] = useState(false);
   const [wantDraw, setWantDraw] = useState(false);
+  const [turn, setTurn] = useState<"X" | "O" | null>(null);
 
   const [userTime, setUserTime] = useState<number | null>(null);
   const [opponentTime, setOpponentTime] = useState<number | null>(null);
@@ -88,9 +91,10 @@ export function GameManager({
     }
     const interval = setInterval(() => {
       // @ts-expect-error - TS doesn't know that time is not null
-      if (userTime) setUserTime((time) => time - 1);
-      // @ts-expect-error - TS doesn't know that time is not null
-      if (opponentTime) setOpponentTime((time) => time - 1);
+      if (userTime && turn === userSymbol) setUserTime((time) => time - 1);
+      if (opponentTime && turn !== userSymbol)
+        // @ts-expect-error - TS doesn't know that time is not null
+        setOpponentTime((time) => time - 1);
     }, 1000);
 
     return () => clearInterval(interval);
@@ -100,12 +104,18 @@ export function GameManager({
     (data: MultiplayerGame) => {
       setData(data);
       setGameBoard(data.board);
-      setUserSymbol(
+      const symbol =
         data.game_status.find(
           (status) =>
             status.player.uuid ===
             (isLogged ? user?.uuid : getCookie("authToken")),
-        )?.symbol ?? null,
+        )?.symbol ?? null;
+      setUserSymbol(symbol);
+      setTurn(() =>
+        data.board.flat().filter((x) => x === "X").length >
+        data.board.flat().filter((o) => o === "O").length
+          ? "O"
+          : "X",
       );
       setIsLoading(false);
     },
@@ -122,6 +132,7 @@ export function GameManager({
         newBoard[moveMessage.row][moveMessage.column] = moveMessage.symbol;
         return newBoard;
       });
+      setTurn((prevTurn) => (prevTurn === "X" ? "O" : "X"));
 
       // TIME
       if (moveMessage.time)
@@ -134,30 +145,24 @@ export function GameManager({
   const handleDraw = useCallback((drawMessage: GameWantDraw) => {
     if (drawMessage.end) setGameEndData(drawMessage.end);
     else setWantDraw(true);
-    window.alert("Draw");
   }, []);
-  const handleRematch = useCallback((rematchMessage: GameWantRematch) => {
-    if (rematchMessage.end) setGameEndData(rematchMessage.end);
+  const handleRematch = useCallback(() => {
     setWantRematch(true);
-    window.alert("Rematch");
   }, []);
   const handleSurrender = useCallback((surrenderMessage: GameWantSurrender) => {
     setGameEndData(surrenderMessage.end);
-    window.alert("Surrender");
   }, []);
 
   // handle game end
   useEffect(() => {
     if (!gameEndData) return;
-    const end = gameEndData.end;
-    setGameBoard(end.win_board);
-    setWinData(userSymbol === "X" ? end.X : end.O);
-    logoutAnonymus();
-  }, [gameEndData, userSymbol, logoutAnonymus]);
+    if (gameEndData.win_board) setGameBoard(gameEndData.win_board);
+    setWinData(userSymbol === "X" ? gameEndData.X : gameEndData.O);
+    if (isAnonymus) logoutAnonymus();
+  }, [gameEndData, userSymbol, isAnonymus, logoutAnonymus]);
 
   const handleMessage = useCallback(
     (event: MessageEvent) => {
-      console.log("event", event);
       const message = JSON.parse(event.data);
 
       switch (message.type) {
@@ -168,7 +173,7 @@ export function GameManager({
         case MessageType.draw:
           return handleDraw(message as GameWantDraw);
         case MessageType.rematch:
-          return handleRematch(message as GameWantRematch);
+          return handleRematch();
         case MessageType.surrender:
           return handleSurrender(message as GameWantSurrender);
         default:
@@ -189,10 +194,7 @@ export function GameManager({
   useEffect(() => {
     if (!uuid) return;
     if (websocketRef.current) websocketRef.current.close();
-    if (!getCookie("authToken")) {
-      displayMessage("You need to be logged in to play multiplayer");
-      return;
-    }
+    console.log("Connecting to WebSocket");
 
     setIsLoading(true);
     const websocket = new WebSocket(
@@ -202,6 +204,7 @@ export function GameManager({
 
     const handleOpen = () => {
       setIsConnected(true);
+      setIsLoading(false);
     };
 
     const handleClose = () => {
@@ -223,8 +226,7 @@ export function GameManager({
   const sendMessage = (message: object) => {
     if (websocketRef.current?.readyState === WebSocket.OPEN) {
       websocketRef.current.send(JSON.stringify(message));
-      console.log("Sent message", message);
-    } else console.error("WebSocket is not open");
+    } else displayMessage("Failed to contact server!");
   };
 
   return (
@@ -237,6 +239,7 @@ export function GameManager({
         board: gameBoard,
         endData: gameEndData,
         userSymbol,
+        turn,
 
         userTime,
         opponentTime,
@@ -259,6 +262,37 @@ export function GameManager({
       }}
     >
       {children}
+      <GameEndModal
+        open={!!winData}
+        title={winData?.result ?? ""}
+        turn={userSymbol ?? "X"}
+        description={winData?.message ?? ""}
+        rematchAction={() => {
+          setWinData(null);
+          sendMessage({ rematch: true } as GameRematch);
+        }}
+        closeAction={() => setWinData(null)}
+      />
+      <GameWantModal
+        open={wantRematch}
+        title="Odveta"
+        description="Můžete si okamžitě zahrát odvetu, s odvetou musí souhlasit oba hráči. Chcete proti hráči znovu soupeřit?"
+        acceptAction={() => {
+          setWantRematch(false);
+          sendMessage({ rematch: true } as GameRematch);
+        }}
+        cancelAction={() => setWantRematch(false)}
+      />
+      <GameWantModal
+        open={wantDraw}
+        title="Nabídka remízy"
+        description="Váš soupeř nabízí ukončit hru remízou. Chcete hru předčasně ukončit remízou?"
+        acceptAction={() => {
+          setWantDraw(false);
+          sendMessage({ draw: true } as GameDraw);
+        }}
+        cancelAction={() => setWantDraw(false)}
+      />
     </GameManagerContext.Provider>
   );
 }

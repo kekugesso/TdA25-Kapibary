@@ -112,10 +112,10 @@ export default function Profile({
           alt="Profile Picture"
           width={150}
           height={150}
-          className="min-w-[150px] max-w-[150px] min-h-[150px] max-h-[150px] rounded-lg bg-black-dark dark:bg-white-dark text-white-dark dark:text-black-dark flex flex-center"
+          className="w-[150px] h-[150px] rounded-lg bg-gray-100 dark:bg-white-dark object-cover"
         />
         <div className="flex flex-col space-y-2">
-          <h1 className="text-5xl text-center sm:text-left font-bold">
+          <h1 className="text-5xl text-center sm:text-left font-bold max-w-[300px] sm:max-w-[55vw] truncate">
             {user.username}
           </h1>
           <p className="text-sm text-center sm:text-left">

@@ -4,42 +4,36 @@ import {
   ModalFooter,
   ModalHeader,
 } from "@/components/core/Modal";
-import TurnSwitch from "@/components/game/TurnSwitch";
-import { useState } from "react";
 
-export default function GameCreationModal({
+export default function GameWantModal({
   open,
-  createAction,
+  title,
+  description,
+  acceptAction,
   cancelAction,
 }: {
+  title: string;
+  description: string;
   open: boolean;
-  createAction: (symbol: "X" | "O") => void;
+  acceptAction: () => void;
   cancelAction: () => void;
 }) {
-  const [symbol, setSymbol] = useState<"X" | "O">("X");
-
   return (
     <Modal open={open} onClose={cancelAction}>
-      <ModalHeader>Vytvoření hry</ModalHeader>
-      <ModalBody className="flex flex-center flex-col">
-        <h2 className="text-sm">Za jaký znak chceš hrát?</h2>
-        <TurnSwitch
-          turn={symbol}
-          changeAction={() => setSymbol((prev) => (prev === "X" ? "O" : "X"))}
-        />
-      </ModalBody>
+      <ModalHeader>{title}</ModalHeader>
+      <ModalBody className="flex flex-center">{description}</ModalBody>
       <ModalFooter>
         <button
-          onClick={() => createAction(symbol)}
+          onClick={acceptAction}
           className="bg-blue-light dark:bg-blue-dark text-white font-bold text-lg py-3 px-6 rounded-lg shadow-black-light shadow-sm transform transition-all duration-300 ease-in-out hover:scale-105"
         >
-          Create
+          Ano
         </button>
         <button
           onClick={cancelAction}
           className="bg-red-light dark:bg-red-dark text-white font-bold text-lg py-3 px-6 rounded-lg shadow-black-light shadow-sm transform transition-all duration-300 ease-in-out hover:scale-105 ml-4"
         >
-          Zrušit
+          Ne
         </button>
       </ModalFooter>
     </Modal>

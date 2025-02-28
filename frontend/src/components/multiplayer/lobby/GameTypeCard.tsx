@@ -22,7 +22,7 @@ export default function GameTypeCard({
 }) {
   return (
     <div className="flex flex-col flex-center space-y-4 px-[10%] text-center h-full w-full">
-      <h1 className="font-bold text-xl">{title}</h1>
+      <h1 className="font-bold text-3xl m-4">{title}</h1>
       <p className="font-bold text-lg mt-4 h-[100px]">{description}</p>
       <Image
         src={image}

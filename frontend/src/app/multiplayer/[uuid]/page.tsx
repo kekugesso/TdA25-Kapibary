@@ -1,12 +1,12 @@
 "use client";
 
 import Loading from "@/components/core/Loading";
-import {
-  GameManager,
-  useGameManager,
-} from "@/components/multiplayer/game/GameManager";
+import { GameManager } from "@/components/multiplayer/game/GameManager";
 import { useEffect, useState } from "react";
-import Board from "@/components/game/Board";
+import GameLoadingScreen from "@/components/multiplayer/game/GameLoadingScreen";
+import GameScreen from "@/components/multiplayer/game/GameScreen";
+import UserInfo from "@/components/multiplayer/game/UserInfo";
+import DissableFooter from "@/components/core/DissableFooter";
 
 export default function MultiplayerGame({
   params,
@@ -31,31 +31,24 @@ export default function MultiplayerGame({
     <Loading />
   ) : (
     <GameManager uuid={uuid}>
-      <article>
-        <GameInfo />
-      </article>
+      <GameLoadingScreen>
+        <article className="flex flex-col mid:flex-row">
+          <span className="flex-1" />
+          <UserInfo
+            symbol="X"
+            className="sm:hidden md:absolute md:opacity-0 mid:static mid:flex mid:opacity-100 md:flex-col flex-center transition-all duration-300 ease-in-out"
+          />
+          <span className="flex-1" />
+          <GameScreen className="flex flex-center flex-col" />
+          <span className="flex-1" />
+          <UserInfo
+            symbol="O"
+            className="sm:hidden md:absolute md:opacity-0 mid:static mid:flex mid:opacity-100 md:flex-col flex-center transition-all duration-300 ease-in-out"
+          />
+          <span className="flex-1" />
+        </article>
+      </GameLoadingScreen>
+      <DissableFooter />
     </GameManager>
-  );
-}
-
-function GameInfo() {
-  const { isLoading, isConnected, board, makeMove, surrender, draw, rematch } =
-    useGameManager();
-
-  return (
-    <div>
-      {isLoading ? (
-        <Loading />
-      ) : (
-        <div>
-          <h1>Game</h1>
-          <p>Connected: {isConnected ? "Yes" : "No"}</p>
-          <Board board={board} handleClick={makeMove} />
-          <button onClick={surrender}>Surrender</button>
-          <button onClick={draw}>Draw</button>
-          <button onClick={rematch}>Rematch</button>
-        </div>
-      )}
-    </div>
   );
 }
