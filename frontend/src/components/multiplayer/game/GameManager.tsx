@@ -4,7 +4,7 @@ import { useAuth } from "@/components/core/AuthProvider";
 import { useErrorModal } from "@/components/core/ErrorModalProvider";
 import { BoardType } from "@/types/board/BoardType";
 import { MultiplayerGame } from "@/types/multiplayer/game";
-import { GameEnd } from "@/types/multiplayer/GameEnd";
+import { GameEnd, SymbolMessage } from "@/types/multiplayer/GameEnd";
 import {
   GameDraw,
   GameMove,
@@ -56,7 +56,13 @@ export function GameManager({
   uuid: string;
   children: React.ReactNode;
 }) {
-  const { user, isLogged, loading: authLoading } = useAuth();
+  const {
+    user,
+    isLogged,
+    loading: authLoading,
+
+    logoutAnonymus,
+  } = useAuth();
   const { displayMessage } = useErrorModal();
 
   const websocketRef = useRef<WebSocket | null>(null);
@@ -67,6 +73,7 @@ export function GameManager({
   const [data, setData] = useState<MultiplayerGame | null>(null);
   const [gameBoard, setGameBoard] = useState<BoardType>([]);
   const [gameEndData, setGameEndData] = useState<GameEnd | null>(null);
+  const [winData, setWinData] = useState<SymbolMessage | null>(null);
   const [wantRematch, setWantRematch] = useState(false);
   const [wantDraw, setWantDraw] = useState(false);
 
@@ -139,6 +146,15 @@ export function GameManager({
     window.alert("Surrender");
   }, []);
 
+  // handle game end
+  useEffect(() => {
+    if (!gameEndData) return;
+    const end = gameEndData.end;
+    setGameBoard(end.win_board);
+    setWinData(userSymbol === "X" ? end.X : end.O);
+    logoutAnonymus();
+  }, [gameEndData, userSymbol, logoutAnonymus]);
+
   const handleMessage = useCallback(
     (event: MessageEvent) => {
       console.log("event", event);
@@ -173,7 +189,7 @@ export function GameManager({
   useEffect(() => {
     if (!uuid) return;
     if (websocketRef.current) websocketRef.current.close();
-    if (!isLogged && !getCookie("authToken")) {
+    if (!getCookie("authToken")) {
       displayMessage("You need to be logged in to play multiplayer");
       return;
     }
@@ -183,7 +199,6 @@ export function GameManager({
       `ws://${window.location.hostname}:2568/ws/game/${uuid}`,
     );
     websocketRef.current = websocket;
-    window.websocket = websocket;
 
     const handleOpen = () => {
       setIsConnected(true);

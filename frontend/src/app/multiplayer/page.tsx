@@ -1,4 +1,5 @@
 "use client";
+import { useAuth } from "@/components/core/AuthProvider";
 import { useErrorModal } from "@/components/core/ErrorModalProvider";
 import GameCreationModal from "@/components/multiplayer/lobby/GameCreationModal";
 import GameFindModal from "@/components/multiplayer/lobby/GameFindModal";
@@ -6,7 +7,7 @@ import GameInviteModal from "@/components/multiplayer/lobby/GameInviteModal";
 import GameJoinModal from "@/components/multiplayer/lobby/GameJoinModal";
 import GameTypeCard from "@/components/multiplayer/lobby/GameTypeCard";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { getCookie, setCookie } from "cookies-next/client";
+import { getCookie } from "cookies-next/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -30,6 +31,7 @@ export default function MultiplayerLobby({
 
   const [gameCode, setGameCode] = useState<number | undefined>(undefined);
   const router = useRouter();
+  const { loginAnonymus } = useAuth();
   const { displayMessage, displayError } = useErrorModal();
   const [findingGame, setFindingGame] = useState(false);
   const [joinGameModal, setJoinGameModal] = useState(false);
@@ -46,6 +48,8 @@ export default function MultiplayerLobby({
         },
         body: JSON.stringify({ symbol: symbol } as { symbol: "X" | "O" }),
       });
+      if (res.status === 401)
+        throw new Error("Na vytvoření hry musíš být přihlášený");
       if (!res.ok) throw new Error((await res.json()).message);
       return (await res.json()) as { gameCode: number; uuid: string };
     },
@@ -113,7 +117,7 @@ export default function MultiplayerLobby({
         });
       },
       onSuccess: (data) => {
-        if (data.authtoken) setCookie("authToken", data.authtoken);
+        if (data.authtoken) loginAnonymus(data.authtoken);
         localStorage.setItem("multiplayerGame", data.uuid);
         router.push(`/multiplayer/${data.uuid}`);
       },

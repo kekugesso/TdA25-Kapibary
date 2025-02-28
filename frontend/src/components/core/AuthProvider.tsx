@@ -35,17 +35,23 @@ export interface AuthContextType {
   check: () => Promise<boolean>;
   logout: () => Promise<void | Error>;
   loading: boolean;
+
+  isAnonymus: boolean;
+  loginAnonymus: (token: string) => void | Error;
+  logoutAnonymus: () => void | Error;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isAnonymus, setIsAnonymus] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const router = useRouter();
   const path = usePathname();
 
   const loginSucess = async (data: LoginResponse | RegisterResponse) => {
+    if (isAnonymus) setIsAnonymus(false);
     setUser(data.user);
     setCookie("authToken", data.token);
     router.prefetch(
@@ -74,6 +80,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     },
     [loginMutation],
   );
+
+  const loginAnonymus = (token: string) => {
+    setIsAnonymus(true);
+    setCookie("authToken", token);
+  };
+  const logoutAnonymus = () => {
+    setIsAnonymus(false);
+    deleteCookie("authToken");
+  };
 
   const registerMutation = RegisterMutation({
     onSuccessAction: loginSucess,
@@ -107,6 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           Authorization: `Token ${getCookie("authToken")}`,
         },
       }).then(async (res) => {
+        if (isAnonymus) return;
         if (res.status == 200) return (await res.json()) as User;
         deleteCookie("authToken");
         setUser(null);
@@ -157,13 +173,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else setLoading(false);
     };
 
-    initializeAuth();
-  }, [check, checkQuery, user, checkQuery.data, router, loading, path]);
+    if (!isAnonymus) initializeAuth();
+  }, [
+    isAnonymus,
+    check,
+    checkQuery,
+    user,
+    checkQuery.data,
+    router,
+    loading,
+    path,
+  ]);
 
   useEffect(() => {
     if (loading) return;
     if (checkQuery.isError) return;
     if (!getCookie("authToken")) return;
+    if (isAnonymus) return;
     checkQuery.refetch();
   }, [path, loading]);
 
@@ -182,6 +208,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           registerMutation.isPending ||
           logoutMutation.isPending,
         isLogged: !!user,
+        isAnonymus,
+        loginAnonymus,
+        logoutAnonymus,
       }}
     >
       {children}
