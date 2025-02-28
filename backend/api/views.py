@@ -720,14 +720,14 @@ class RatingView(APIView):
                     game_instance = serializer.save()  # Save and keep reference
                 else:
                     return Response(serializer.errors, status=400)
+                symbol_random = random.choice(["X", "O"])
+                    if(symbol_random == "X"):
+                        second_symbol = "O"
+                    else:
+                        second_symbol = "X"
                 for j in range(2):
                     try:
                         data = query_list[i+j]["user"]["uuid"]
-                        symbol_random = random.choice(["X", "O"])
-                        if(symbol_random == "X"):
-                            second_symbol = "O"
-                        else:
-                            second_symbol = "X"
                         if(j == 0):
                             gamestatus_data = {
                                 "player": query_list[i+j]["user"]["uuid"],
