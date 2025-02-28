@@ -345,6 +345,8 @@ class GameConsumer(AsyncWebsocketConsumer):
     async def get_end_dict(self, uuid_player, end, reason, game_uuid, friendly):
         resultjson = {}
         opponent_uuid = await self.get_opponent(uuid_player, game_uuid)
+        player_symbol = ""
+        opponent_symbol = ""
         if(friendly):
             if(uuid_player == self.data[game_uuid]["anonymous"]):
                 opponent_symbol = await self.get_symbol(game_uuid, opponent_uuid)
