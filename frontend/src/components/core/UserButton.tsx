@@ -39,8 +39,8 @@ export default function UserButton({ center }: { center: boolean }) {
         className="bg-white border border-black-light dark:bg-black-light p-2 rounded-md text-center z-40"
       >
         <div className="flex flex-col space-y-3 text-lg">
-          {loading ? (
-            <Loading height="h-8" />
+          {!loading ? (
+            <Loading height="min-h-8" iconSize="h-5 w-5" />
           ) : isLogged ? (
             <>
               <Link href="/profile">Uživatelský profil</Link>
