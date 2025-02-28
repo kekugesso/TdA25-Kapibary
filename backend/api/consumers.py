@@ -202,6 +202,8 @@ class GameConsumer(AsyncWebsocketConsumer):
                         return True
             else:
                 gamestatus = GameStatus.objects.filter(player=uuid_user, result="unknown").first()
+                if(gamestatus is None):
+                    return False
                 if(tah == gamestatus.symbol):
                     return True
         else:
