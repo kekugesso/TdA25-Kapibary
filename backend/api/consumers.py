@@ -544,7 +544,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         else:
             if(self.data[game_uuid]["anonymous"] != ""):
                 if(result == "draw"):
-                    if(win_uuid == self.data[game_uuid]["anonymous"]):
+                    if(win_uuid == self.data[game_uuid]["anonymous"] or win_uuid == "anonymous"):
                         player_uuid = lose_uuid
                     else:
                         player_uuid = win_uuid
@@ -552,12 +552,12 @@ class GameConsumer(AsyncWebsocketConsumer):
                     gamestatus.result = "draw"
                     gamestatus.save()
                 else:
-                    if(win_uuid == self.data[game_uuid]["anonymous"]):
+                    if(win_uuid == self.data[game_uuid]["anonymous"] or win_uuid == "anonymous"):
                         player_uuid = lose_uuid
                         gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid, result="unknown").first()
                         gamestatus.result = "lose"
                         gamestatus.save()
-                    elif(lose_uuid == self.data[game_uuid]["anonymous"]):
+                    elif(lose_uuid == self.data[game_uuid]["anonymous"] or lose_uuid == "anonymous"):
                         player_uuid = win_uuid
                         gamestatus = GameStatus.objects.filter(game=game_uuid, player=player_uuid, result="unknown").first()
                         gamestatus.result = "win"
