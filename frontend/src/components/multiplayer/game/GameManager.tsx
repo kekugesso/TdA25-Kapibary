@@ -194,7 +194,6 @@ export function GameManager({
   useEffect(() => {
     if (!uuid) return;
     if (websocketRef.current) websocketRef.current.close();
-    console.log("Connecting to WebSocket");
 
     setIsLoading(true);
     const websocket = new WebSocket(
