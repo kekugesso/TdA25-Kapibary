@@ -141,13 +141,19 @@ class UserView(APIView):
                 data = request.data
                 if(data.get("new_password") is not None and data.get("new_password") != ""):
                     if(is_valid_password(data["new_password"])):
-                        data["password"] = data["new_password"]
+                        user.password = data["new_password"]
+                        user.save()
                     else:
                         return Response({"password": "Heslo nesplňuje podminky"}, status=400)
-                serializer = CustomUserSerializerCreate(user, data=data)
-                if not serializer.is_valid():
-                    return Response(serializer.errors, status=400)
-                user = serializer.save()
+                if(data.get("username") is not None):
+                    user.username = data["username"]
+                    user.save()
+                if(data.get("email") is not None):
+                    user.email = data["email"]
+                    user.save()
+                if(data.get("avatar") is not None):
+                    user.avatar = data["avatar"]
+                    user.save()
                 serializer = CustomUserSerializerView(user)
                 result = count_results(user.uuid, serializer.data)
                 return Response(result)
@@ -723,14 +729,14 @@ class RatingView(APIView):
                     game_instance = serializer.save()  # Save and keep reference
                 else:
                     return Response(serializer.errors, status=400)
+                symbol_random = random.choice(["X", "O"])
+                    if(symbol_random == "X"):
+                        second_symbol = "O"
+                    else:
+                        second_symbol = "X"
                 for j in range(2):
                     try:
                         data = query_list[i+j]["user"]["uuid"]
-                        symbol_random = random.choice(["X", "O"])
-                        if(symbol_random == "X"):
-                            second_symbol = "O"
-                        else:
-                            second_symbol = "X"
                         if(j == 0):
                             gamestatus_data = {
                                 "player": query_list[i+j]["user"]["uuid"],
