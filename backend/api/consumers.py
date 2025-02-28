@@ -88,7 +88,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                         if(data.get("rematch") == False):
                             game_data["rematch_to"] = ""
                         else:
-                            if(uuid_player == game_data["rematch_to"]):
+                            if((game_data["rematch_to"] == "anonymous" and uuid_player == self.data[uuid]["anonymous"]) or uuid_player == game_data["rematch_to"]):
                                 data["new_game"] = await sync_to_async(self.create_new_game)(uuid_player, uuid, game_data["friendly"], game_data["anonymous"])
                 else:
                     send = False
@@ -105,7 +105,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                             data["draw_to"] = opponent_uuid
                             game_data["draw_to"] = opponent_uuid
                         else:
-                            if(data.get("draw") == True):
+                            if((game_data["draw_to"] == "anonymous" and uuid_player == self.data[uuid]["anonymous"]) or uuid_player == game_data["draw_to"]):
                                 game_data["end"] = await self.get_end_dict(uuid_player, "draw", "agreed", uuid, game_data["friendly"])
                                 opponent_uuid = await self.get_opponent(uuid_player, uuid)
                                 await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "draw", game_data["friendly"])
@@ -555,6 +555,17 @@ class GameConsumer(AsyncWebsocketConsumer):
                     if(win_uuid == self.data[game_uuid]["anonymous"]):
                         player_uuid = lose_uuid
                         gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid, result="unknown").first()
+                        gamestatus.result = "lose"
+                        gamestatus.save()
+                    elif(lose_uuid == self.data[game_uuid]["anonymous"]):
+                        player_uuid = win_uuid
+                        gamestatus = GameStatus.objects.filter(game=game_uuid, player=player_uuid, result="unknown").first()
+                        gamestatus.result = "win"
+                        gamestatus.save()
+                elif (result == "lose"):
+                    if(win_uuid == self.data[game_uuid]["anonymous"]):
+                        player_uuid = lose_uuid
+                        gamestatus = GameStatus.objects.filter(game=game_uuid, player=player_uuid, result="unknown").first()
                         gamestatus.result = "lose"
                         gamestatus.save()
                     elif(lose_uuid == self.data[game_uuid]["anonymous"]):
