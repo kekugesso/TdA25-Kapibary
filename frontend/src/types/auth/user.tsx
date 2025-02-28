@@ -36,5 +36,4 @@ type UserSettingsError = {
   new_password?: string[];
 };
 
-export type { User, SmallUser, GameHistory, UserSettings, UserSettingsError };
-export { GameResult };
+export type { User, SmallUser, UserSettings, UserSettingsError };

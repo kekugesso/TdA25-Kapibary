@@ -1,4 +1,4 @@
-import { GameHistory } from "@/types/auth/user";
+import { GameHistory } from "@/types/multiplayer/GameHistory";
 import {
   Popover,
   PopoverTrigger,

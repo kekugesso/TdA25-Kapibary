@@ -13,7 +13,7 @@ import { getCookie } from "cookies-next/client";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 
 export default function Admin() {
   const { user, loading } = useAuth();
@@ -97,34 +97,36 @@ export default function Admin() {
   return loading || !user?.is_superuser ? (
     <Loading />
   ) : (
-    <AdminManager
-      banAction={(uuid: string) => banUserMutation.mutate(uuid)}
-      changeEloAction={(uuid: string, elo: number) =>
-        changeEloMutation.mutate({ uuid, elo })
-      }
-    >
-      <Pagination<User> queryKey={["users"]} fetcherAction={fetchItems}>
-        <article className="flex flex-col">
-          <div className="px-[5%] pt-[3%] pb-[3%]">
-            <PagedSearchBar />
-          </div>
-          <PagedItems<User>>
-            {(items) => (
-              <ul className="px-[5%] pb-[5%] space-y-2">
-                {items.map((item) => (
-                  <TableItem key={item.uuid} {...item} />
-                ))}
-                {items.length === 0 && (
-                  <div className="text-center">Žádné výsledky</div>
-                )}
-              </ul>
-            )}
-          </PagedItems>
-          <div className="flex-1" />
-          <PageSelector />
-        </article>
-      </Pagination>
-    </AdminManager>
+    <Suspense fallback={<Loading />}>
+      <AdminManager
+        banAction={(uuid: string) => banUserMutation.mutate(uuid)}
+        changeEloAction={(uuid: string, elo: number) =>
+          changeEloMutation.mutate({ uuid, elo })
+        }
+      >
+        <Pagination<User> queryKey={["users"]} fetcherAction={fetchItems}>
+          <article className="flex flex-col">
+            <div className="px-[5%] pt-[3%] pb-[3%]">
+              <PagedSearchBar />
+            </div>
+            <PagedItems<User>>
+              {(items) => (
+                <ul className="px-[5%] pb-[5%] space-y-2">
+                  {items.map((item) => (
+                    <TableItem key={item.uuid} {...item} />
+                  ))}
+                  {items.length === 0 && (
+                    <div className="text-center">Žádné výsledky</div>
+                  )}
+                </ul>
+              )}
+            </PagedItems>
+            <div className="flex-1" />
+            <PageSelector />
+          </article>
+        </Pagination>
+      </AdminManager>
+    </Suspense>
   );
 }
 

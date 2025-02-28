@@ -22,6 +22,13 @@ export default function GameInviteModal({
 }) {
   const [copied, setCopied] = useState(false);
 
+  const url = () => {
+    if (typeof window !== "undefined") {
+      return `${window.location.host}/multiplayer?game=${gameCode}`;
+    }
+    return "";
+  };
+
   return (
     <Modal open={open} onClose={cancelAction}>
       <ModalHeader>Pozvánka do hry</ModalHeader>
@@ -39,7 +46,7 @@ export default function GameInviteModal({
             id="gameLink"
             className="w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none border border-transparent focus:border-blue-light select-all"
           >
-            {`${window.location.host}/multiplayer?game=${gameCode}`}
+            {url()}
           </div>
           <Image
             src="/img/copy_icon.svg"
@@ -48,9 +55,7 @@ export default function GameInviteModal({
             height={44}
             className="absolute right-0 top-[35%] p-3 cursor-pointer hover:scale-110 transition-all duration-300 ease-in-out dark:invert"
             onClick={() => {
-              navigator.clipboard.writeText(
-                `${window.location.host}/multiplayer?game=${gameCode}`,
-              );
+              navigator.clipboard.writeText(url());
               setCopied(true);
               setTimeout(() => setCopied(false), 1500);
             }}
