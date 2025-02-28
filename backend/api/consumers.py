@@ -64,10 +64,13 @@ class GameConsumer(AsyncWebsocketConsumer):
             uuid_player = game_data["anonymous"]
         if(data.get("surrender") == True):
             if(await self.control_if_player(uuid, uuid_player)):
-                data["type"] = "surrender"
-                game_data["end"] = await self.get_end_dict(uuid_player, "lose", "surrender", uuid, game_data["friendly"])
-                opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", game_data["friendly"])
+                if(game_data["end"] is None):
+                    data["type"] = "surrender"
+                    game_data["end"] = await self.get_end_dict(uuid_player, "lose", "surrender", uuid, game_data["friendly"])
+                    opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                    await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", game_data["friendly"])
+                else:
+                    send = False
             else:
                 send = False
         elif("rematch" in data):
@@ -178,7 +181,7 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     @sync_to_async
     def get_symbol(self, uuid_game, uuid_user):
-        gamestatus = GameStatus.objects.filter(game=uuid_game, player=uuid_user).first()
+        gamestatus = GameStatus.objects.filter(game=uuid_game, player=uuid_user, result="unknown").first()
         return gamestatus.symbol
 
     @sync_to_async
@@ -191,16 +194,16 @@ class GameConsumer(AsyncWebsocketConsumer):
         if(len(players) < 2):
             if(uuid_user in players):
                 if(uuid_user == self.data[uuid_game]["anonymous"]):
-                    gamestatus = GameStatus.objects.filter(player=players[0]).first()
+                    gamestatus = GameStatus.objects.filter(player=players[0], result="unknown").first()
                     if(tah != gamestatus.symbol):
                         return True
                 else:
-                    gamestatus = GameStatus.objects.filter(player=uuid_user).first()
+                    gamestatus = GameStatus.objects.filter(player=uuid_user, result="unknown").first()
                     if(tah == gamestatus.symbol):
                         return True
         else:
             if(uuid_user in players):
-                gamestatususer = GameStatus.objects.filter(player=uuid_user).first()
+                gamestatususer = GameStatus.objects.filter(player=uuid_user, result="unknown").first()
                 return gamestatususer.symbol == tah
         return False
 
@@ -540,33 +543,33 @@ class GameConsumer(AsyncWebsocketConsumer):
                         player_uuid = lose_uuid
                     else:
                         player_uuid = win_uuid
-                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=player_uuid).first()
+                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=player_uuid, result="unknown").first()
                     gamestatus.result = "draw"
                     gamestatus.save()
                 elif (result == "win"):
                     if(win_uuid == self.data[game_uuid]["anonymous"]):
                         player_uuid = lose_uuid
-                        gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid).first()
+                        gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid, result="unknown").first()
                         gamestatus.result = "lose"
                         gamestatus.save()
                     elif(lose_uuid == self.data[game_uuid]["anonymous"]):
                         player_uuid = win_uuid
-                        gamestatus = GameStatus.objects.filter(game=game_uuid, player=player_uuid).first()
+                        gamestatus = GameStatus.objects.filter(game=game_uuid, player=player_uuid, result="unknown").first()
                         gamestatus.result = "win"
                         gamestatus.save()
             else:
                 if(result == "draw"):
-                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=win_uuid).first()
+                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=win_uuid, result="unknown").first()
                     gamestatus.result = "draw"
                     gamestatus.save()
-                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid).first()
+                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid, result="unknown").first()
                     gamestatus.result = "draw"
                     gamestatus.save()
                 else:
-                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=win_uuid).first()
+                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=win_uuid, result="unknown").first()
                     gamestatus.result = "win"
                     gamestatus.save()
-                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid).first()
+                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid, result="unknown").first()
                     gamestatus.result = "lose"
                     gamestatus.save()
 

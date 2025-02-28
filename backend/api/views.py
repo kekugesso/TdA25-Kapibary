@@ -545,10 +545,9 @@ class FreeplayGameView(APIView):
         return Response(result, status=200)
         
     def post(self, request):
-        game_status = GameStatus.objects.filter(player=request.user.uuid).first()
+        game_status = GameStatus.objects.filter(player=request.user.uuid, result="unknown").first()
         if(game_status is not None):
-            if(game_status.result == "unknown"):
-                return Response({"message": "You are already in a game"}, status=400)
+            return Response({"message": "Už máš rozehranou hru"}, status=400)
         data = {
             "name": ''.join(random.choices(string.ascii_letters, k=10)),
             "gameType": "friendly",
@@ -667,8 +666,8 @@ class QueryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        last_game_status = GameStatus.objects.filter(player=request.user.uuid).first()
-        if(last_game_status is None or last_game_status.result!="unknown"):
+        last_game_status = GameStatus.objects.filter(player=request.user.uuid, result="unknown").first()
+        if(last_game_status is None):
             data = {"user": request.user.uuid}
             try:
                 QueryUsers.objects.get(user=request.user.uuid)
@@ -694,7 +693,7 @@ class QueryView(APIView):
 
 class RatingView(APIView):
     def get(self, request):
-        game_status = GameStatus.objects.filter(player=request.user.uuid).first()
+        game_status = GameStatus.objects.filter(player=request.user.uuid, result="unknown").first()
         if(game_status is None):
             return Response({"message": "None"}, status=404)
         if(game_status.result == "unknown"):
