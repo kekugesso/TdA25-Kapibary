@@ -192,15 +192,15 @@ class GameConsumer(AsyncWebsocketConsumer):
         for gamestatus in serializer.data:
             players.append(gamestatus["player"]["uuid"])
         if(len(players) < 2):
-            if(uuid_user in players):
+            if(uuid_user not in players):
                 if(uuid_user == self.data[uuid_game]["anonymous"]):
                     gamestatus = GameStatus.objects.filter(player=players[0], result="unknown").first()
                     if(tah != gamestatus.symbol):
                         return True
-                else:
-                    gamestatus = GameStatus.objects.filter(player=uuid_user, result="unknown").first()
-                    if(tah == gamestatus.symbol):
-                        return True
+            else:
+                gamestatus = GameStatus.objects.filter(player=uuid_user, result="unknown").first()
+                if(tah == gamestatus.symbol):
+                    return True
         else:
             if(uuid_user in players):
                 gamestatususer = GameStatus.objects.filter(player=uuid_user, result="unknown").first()
@@ -346,7 +346,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         resultjson = {}
         opponent_uuid = await self.get_opponent(uuid_player, game_uuid)
         if(friendly):
-            if(uuid_player == "anonymous"):
+            if(uuid_player == self.data[game_uuid]["anonymous"]):
                 opponent_symbol = await self.get_symbol(game_uuid, opponent_uuid)
                 if(opponent_symbol == "X"):
                     player_symbol = "O"
