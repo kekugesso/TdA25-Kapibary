@@ -57,11 +57,14 @@ class GameConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         game_data = self.data[uuid]
         token = await self.get_user_from_token()
-        control_token = await self.is_valid_token(token)
-        if control_token:
-            uuid_player = await self.get_token(token)
+        if(token is not None):
+            control_token = await self.is_valid_token(token)
+            if control_token:
+                uuid_player = await self.get_token(token)
+            else:
+                uuid_player = game_data["anonymous"]
         else:
-            uuid_player = game_data["anonymous"]
+            uuid_player = None
         if(data.get("surrender") == True):
             if(await self.control_if_player(uuid, uuid_player)):
                 if(game_data["end"] is None):
