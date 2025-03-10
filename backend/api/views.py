@@ -133,6 +133,7 @@ class UserView(APIView):
             if(data.get("new_elo") is not None):
                 user.elo = data["new_elo"]
             if(data.get("is_banned") is not None):
+                Token.objects.filter(user=user).delete()
                 user.is_banned = data["is_banned"]
             user.save()
             return Response(status=200)
@@ -142,7 +143,7 @@ class UserView(APIView):
                 if(data.get("new_password") is not None and data.get("new_password") != ""):
                     if(is_valid_password(data["new_password"])):
                         user.password = data["new_password"]
-                        user.save()
+                        user.set_password(data["new_password"])
                     else:
                         return Response({"password": "Heslo nesplňuje podminky"}, status=400)
                 if(data.get("username") is not None):
@@ -502,6 +503,8 @@ class Login(APIView):
             return Response(status=401)
         if not user.check_password(data['password']):
             return Response(status=401)
+        if(user.is_banned == True):
+            return Response({"message":"Uživatel je zablokován"}, status=401)
         token, created = Token.objects.get_or_create(user=user)
         serializer = CustomUserSerializerView(user)
         return Response({'token': token.key, "user": count_results(user.uuid, serializer.data)}, status=200)
@@ -803,7 +806,9 @@ class TopView(APIView):
         result = [count_results(user["uuid"], user) for user in serializer.data]
         if(len(serializer.data) == 1):
             result = [count_position(user["uuid"], user) for user in serializer.data]
-
+        else:
+            for i in range(len(result)):
+                result[i]["position"] = i+1
         return paginator.get_paginated_response(result)
 
 def is_valid_password(password):
