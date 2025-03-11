@@ -11,6 +11,7 @@ import {
   GameMove,
   GameRematch,
   GameSurrender,
+  GameTimeLimit,
   GameWantDraw,
   GameWantSurrender,
   GetGameMove,
@@ -83,6 +84,16 @@ export function GameManager({
   const [userTime, setUserTime] = useState<number | null>(null);
   const [opponentTime, setOpponentTime] = useState<number | null>(null);
 
+  const sendMessage = useCallback(
+    (message: object) => {
+      if (websocketRef.current?.readyState === WebSocket.OPEN) {
+        websocketRef.current.send(JSON.stringify(message));
+      } else displayMessage("Failed to contact server!");
+      console.log("Sending message:", message);
+    },
+    [displayMessage],
+  );
+
   useEffect(() => {
     if (!userTime || !opponentTime) return;
     if (gameEndData) {
@@ -90,6 +101,12 @@ export function GameManager({
       setOpponentTime(null);
     }
     const interval = setInterval(() => {
+      if (!gameEndData && (userTime === 0 || opponentTime === 0)) {
+        sendMessage({ time: true } as GameTimeLimit);
+        console.log("Time limit reached");
+        clearInterval(interval);
+        return;
+      }
       // @ts-expect-error - TS doesn't know that time is not null
       if (userTime && turn === userSymbol) setUserTime((time) => time - 1);
       if (opponentTime && turn !== userSymbol)
@@ -98,7 +115,7 @@ export function GameManager({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [gameEndData]);
+  }, [gameEndData, userTime, opponentTime, turn, userSymbol, sendMessage]);
 
   const handleInitialData = useCallback(
     (data: MultiplayerGame) => {
@@ -117,6 +134,12 @@ export function GameManager({
           ? "O"
           : "X",
       );
+      if (data.timers) {
+        setUserTime(symbol === "X" ? data.timers.X.time : data.timers.O.time);
+        setOpponentTime(
+          symbol === "X" ? data.timers.O.time : data.timers.X.time,
+        );
+      }
       setIsLoading(false);
     },
     [isLogged, user],
@@ -196,8 +219,9 @@ export function GameManager({
     if (websocketRef.current) websocketRef.current.close();
 
     setIsLoading(true);
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
     const websocket = new WebSocket(
-      `ws://${window.location.hostname}:2568/ws/game/${uuid}`,
+      `${protocol}://${window.location.hostname}:2568/ws/game/${uuid}`,
     );
     websocketRef.current = websocket;
 
@@ -221,12 +245,6 @@ export function GameManager({
       websocket.close();
     };
   }, [uuid, isLogged, displayMessage, handleMessage]);
-
-  const sendMessage = (message: object) => {
-    if (websocketRef.current?.readyState === WebSocket.OPEN) {
-      websocketRef.current.send(JSON.stringify(message));
-    } else displayMessage("Failed to contact server!");
-  };
 
   return (
     <GameManagerContext.Provider

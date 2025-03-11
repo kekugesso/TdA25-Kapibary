@@ -20,6 +20,7 @@ export default function UserInfo({
   const time = symbol === userSymbol ? userTime : opponentTime;
 
   const formatTime = (time: number) => {
+    if (time === 0) return "0:00";
     const minutes = Math.floor(time / 60);
     const seconds = time % 60;
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
@@ -31,7 +32,7 @@ export default function UserInfo({
         href={`/profile/${player?.player.uuid}`}
         disabled={player === undefined} // player is anonymous
       >
-        {time && (
+        {time !== undefined && time !== null && (
           <div className="flex flex-center">
             <div className="text-2xl font-bold">{formatTime(time)}</div>
           </div>

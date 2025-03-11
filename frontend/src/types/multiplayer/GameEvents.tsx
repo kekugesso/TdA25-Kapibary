@@ -18,6 +18,10 @@ export type GameMove = {
   column: number;
 };
 
+export type GameTimeLimit = {
+  time: boolean;
+};
+
 //RECEIVING
 export type GameWantSurrender = {
   end: GameEnd;
