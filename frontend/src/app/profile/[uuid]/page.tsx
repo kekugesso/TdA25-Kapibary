@@ -7,6 +7,7 @@ import GameHistoryGraph from "@/components/profile/GameHistoryGraph";
 import GameHistoryTable from "@/components/profile/GameHistoryTable";
 import { User } from "@/types/auth/user";
 import { GameHistory } from "@/types/multiplayer/GameHistory";
+import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
@@ -38,6 +39,28 @@ export default function Profile({
   const { displayError } = useErrorModal();
   const router = useRouter();
 
+  const fetchUser = useQuery<User>({
+    queryKey: ["user", uuid],
+    queryFn: async () => {
+      const response = await fetch(`/api/users/${uuid}`);
+      if (response.status === 404)
+        throw new Error((await response.json()).message);
+      if (!response.ok) throw new Error("Failed to fetch user");
+      return await response.json();
+    },
+    enabled: !!uuid && !loading,
+  });
+
+  const fetchGameHistory = useQuery<GameHistory[]>({
+    queryKey: ["gameHistory", uuid],
+    queryFn: async () => {
+      const response = await fetch(`/api/users/${uuid}/game_history`);
+      if (!response.ok) throw new Error("Failed to fetch game history");
+      return await response.json();
+    },
+    enabled: !!uuid && !loading,
+  });
+
   useEffect(() => {
     if (authLoading) return;
     if (!uuid) return;
@@ -46,46 +69,27 @@ export default function Profile({
       setLoading(false);
       return;
     }
-
-    const fetchUser = async () => {
-      try {
-        const response = await fetch(`/api/users/${uuid}`);
-        if (response.status === 404)
-          throw new Error((await response.json()).message);
-        if (!response.ok) throw new Error("Failed to fetch user");
-        const data = await response.json();
-        setUser(data);
-      } catch (error) {
-        displayError(error as Error, {
-          defaultMessage: "Failed to fetch user data",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (loading) fetchUser();
-  }, [uuid, authUser, displayError, authLoading, loading]);
+    if (fetchUser.isSuccess) {
+      setUser(fetchUser.data);
+      setLoading(false);
+    }
+    if (fetchUser.isError)
+      displayError(fetchUser.error as Error, {
+        defaultMessage: "Failed to fetch user",
+      });
+    if (fetchUser.isLoading) setLoading(true);
+  }, [uuid, authUser, displayError, authLoading, loading, fetchUser]);
 
   useEffect(() => {
     if (!uuid) return;
-    if (gameHistory) return;
-
-    const fetchGameHistory = async () => {
-      try {
-        const response = await fetch(`/api/users/${uuid}/game_history`);
-        if (!response.ok) throw new Error("Failed to fetch game history");
-        const data = await response.json();
-        setGameHistory(data);
-      } catch (error) {
-        displayError(error as Error, {
-          defaultMessage: "Failed to fetch game history",
-        });
-      }
-    };
-
-    fetchGameHistory();
-  }, [uuid, displayError, gameHistory]);
+    if (fetchGameHistory.isSuccess) {
+      setGameHistory(fetchGameHistory.data);
+    }
+    if (fetchGameHistory.isError)
+      displayError(fetchGameHistory.error as Error, {
+        defaultMessage: "Failed to fetch game history",
+      });
+  }, [uuid, fetchGameHistory, displayError]);
 
   const formatedDate = (date: string) => {
     const d = new Date(date);
