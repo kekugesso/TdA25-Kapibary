@@ -11,12 +11,12 @@ export default function GameHistoryTable({
   userData: User;
   gameHistory: GameHistory[];
 }) {
-  const getResult = (result: GameResult) => {
-    switch (result) {
+  const getResult = (game: GameHistory) => {
+    switch (game.result) {
       case GameResult.WIN:
-        return "1 : 0";
+        return game.symbol === "X" ? "1 : 0" : "0 : 1";
       case GameResult.LOSE:
-        return "0 : 1";
+        return game.symbol === "X" ? "0 : 1" : "1 : 0";
       case GameResult.DRAW:
         return "½ : ½";
       default:
@@ -59,7 +59,7 @@ export default function GameHistoryTable({
             <div className="border-l p-2 flex flex-center">
               {game.symbol === "X" ? (
                 <>
-                  {userData.username}
+                  <span className="truncate">{userData.username}</span>
                   <span className="ml-1 text-gray-600 dark:text-gray-300">
                     ({game.elo})
                   </span>
@@ -73,13 +73,11 @@ export default function GameHistoryTable({
                 </>
               )}
             </div>
-            <div className="border-l flex flex-center">
-              {getResult(game.result)}
-            </div>
+            <div className="border-l flex flex-center">{getResult(game)}</div>
             <div className="border-l flex flex-center">
               {game.symbol === "X" ? (
                 <>
-                  {game.opponent.username}
+                  <span className="truncate">{game.opponent.username}</span>
                   <span className="ml-1 text-gray-600 dark:text-gray-300">
                     ({game.opponent.elo})
                   </span>
