@@ -15,7 +15,7 @@ export default function Profile() {
     if (ignore) return;
     setIgnore(true);
     if (!user) router.push("/login");
-    else router.push(`/profile/${user.uuid}`);
+    else router.push(user.is_superuser ? "/admin" : `/profile/${user.uuid}`);
   }, [user, router, ignore, loading]);
 
   return <Loading />;

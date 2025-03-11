@@ -45,7 +45,9 @@ export default function UserButton({ center }: { center: boolean }) {
             <Loading height="min-h-8" iconSize="h-5 w-5" />
           ) : isLogged ? (
             <>
-              <Link href="/profile">Uživatelský profil</Link>
+              <Link href="/profile">
+                {user?.is_superuser ? "Admin Panel" : "Uživatelský profil"}
+              </Link>
               <Link
                 href="/logout"
                 className="flex text-red-light dark:text-red-dark flex-center"
