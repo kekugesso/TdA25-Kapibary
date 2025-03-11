@@ -41,7 +41,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         if(gamedata["game_status"][0]["result"] != "unknown"):
             self.data[uuid]["end"] = True
         dataconsumer = self.data[uuid]
-        if(dataconsumer.get("timer") is not None):
+        if(dataconsumer.get("timer") is not None and self.data[uuid]["end"] is None):
             gamedata["time"] = await self.get_timer_for_spectator(dataconsumer.get("timer"), dataconsumer.get("start_time"), dataconsumer.get("tah"))
         matrix = [["" for _ in range(15)] for _ in range(15)]
         for symbol in gamedata.get("board", []):
@@ -79,6 +79,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             uuid_player = None
         if(data.get("time") == True):
             if(await self.control_if_player(uuid, uuid_player)):
+                data["type"] = "time"
                 spend_time = int(time.time() - game_data["start_time"])
                 game_data["timer"][game_data["tah"]]["time"] -= spend_time
                 if(game_data["timer"][game_data["tah"]]["time"] <= 0):
@@ -86,9 +87,10 @@ class GameConsumer(AsyncWebsocketConsumer):
                     game_data["end"] = await self.get_end_dict(uuid_player, "lose", "timeout", uuid, game_data["friendly"])
                     opponent_uuid = await self.get_opponent(uuid_player, uuid)
                     await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", False)
+                    data.pop("time")
                 else:
                     game_data["start_time"] = time.time()
-                data["time"] = game_data["timer"][game_data["tah"]]["time"]
+                    data["time"] = await self.get_timer_for_spectator(game_data.get("timer"), game_data.get("start_time"), game_data.get("tah"))
         elif(data.get("surrender") == True):
             if(await self.control_if_player(uuid, uuid_player)):
                 if(game_data["end"] is None):
@@ -150,7 +152,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                             await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", False)
                         else:
                             game_data["start_time"] = time.time()
-                        data["time"] = game_data["timer"][game_data["tah"]]["time"]
+                            data["time"] = await self.get_timer_for_spectator(game_data.get("timer"), game_data.get("start_time"), game_data.get("tah"))
                     if(control_time == False):
                         data["symbol"] = game_data["tah"]
                         if(game_data["end"] is None):
@@ -211,11 +213,13 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     @sync_to_async
     def get_symbol(self, uuid_game, uuid_user):
-        gamestatus = GameStatus.objects.filter(game=uuid_game, player=uuid_user, result="unknown").first()
+        gamestatus = GameStatus.objects.filter(game=uuid_game, player=uuid_user).first()
         return gamestatus.symbol
 
     @sync_to_async
     def control_player(self, uuid_game, uuid_user, tah):
+        if(self.data[uuid_game]["end"] is not None):
+            return False
         gamestatus = GameStatus.objects.filter(game=uuid_game)
         serializer = GameStatusSerializerView(gamestatus, many=True)
         players = []
@@ -369,7 +373,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         for gamestatus in serializer.data:
             hello = {}
             hello["uuid"] = gamestatus["player"]["uuid"]
-            hello["time"] = 480
+            hello["time"] = 10
             players[gamestatus["symbol"]] = hello
         return players
     
