@@ -372,11 +372,14 @@ class GameConsumer(AsyncWebsocketConsumer):
         return players
     
     async def get_timer_for_spectator(self, timer, start_time, tah):
+        result = {"X": {}, "O": {}}
         if(tah == "X"):
-            timer["X"]["time"] = timer["X"]["time"] - int((time.time() - start_time))
+            result["X"]["time"] = timer["X"]["time"] - int((time.time() - start_time))
+            result["O"]["time"] = timer["O"]["time"]
         else:
-            timer["O"]["time"] = timer["O"]["time"] - int((time.time() - start_time))
-        return timer
+            result["O"]["time"] = timer["O"]["time"] - int((time.time() - start_time))
+            result["X"]["time"] = timer["X"]["time"]
+        return result
 
     async def get_end_dict(self, uuid_player, end, reason, game_uuid, friendly):
         resultjson = {}
