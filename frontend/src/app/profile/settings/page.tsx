@@ -10,20 +10,21 @@ import {
   ModalHeader,
 } from "@/components/core/Modal";
 import { UserSettings, UserSettingsError } from "@/types/auth/user";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCookie } from "cookies-next/client";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function ProfileSettings() {
-  const { user, loading } = useAuth();
+  const { user, loading, check } = useAuth();
   const { displayError, displayMessage } = useErrorModal();
   const router = useRouter();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [settingsError, setSettingsError] = useState<UserSettingsError | null>(
     null,
   );
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (loading) return;
@@ -61,7 +62,11 @@ export default function ProfileSettings() {
             overrideButtonMessage: "Zavřít",
           })
         : setSettingsError(error),
-    onSuccess: () => router.push("/profile"),
+    onSuccess: () => {
+      router.push("/profile");
+      queryClient.invalidateQueries({ queryKey: ["user", user?.uuid] });
+      if (user) check();
+    },
   });
 
   const Validation = (settings: UserSettings): UserSettingsError | void => {
@@ -294,6 +299,7 @@ export default function ProfileSettings() {
               onChange={(e) => handleSettingsChange("username", e.target.value)}
               className={`w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none border border-transparent focus:border-blue-light ${settingsError?.username ? "border-red-light dark:border-red-dark" : ""}`}
               onFocus={() => setSettingsError(null)}
+              onKeyDown={(e) => e.key === "Enter" && saveChanges()}
             />
             <div className="text-red-500 text-sm">
               {settingsError?.username || " "}
@@ -308,6 +314,7 @@ export default function ProfileSettings() {
               onChange={(e) => handleSettingsChange("email", e.target.value)}
               className={`w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none border border-transparent focus:border-blue-light ${settingsError?.email ? "border-red-light dark:border-red-dark" : ""}`}
               onFocus={() => setSettingsError(null)}
+              onKeyDown={(e) => e.key === "Enter" && saveChanges()}
             />
             <div className="text-red-500 text-sm">
               {settingsError?.email || " "}
@@ -322,6 +329,7 @@ export default function ProfileSettings() {
               onChange={(e) => handleSettingsChange("password", e.target.value)}
               className={`w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none border border-transparent focus:border-blue-light ${settingsError?.password ? "border-red-light dark:border-red-dark" : ""}`}
               onFocus={() => setSettingsError(null)}
+              onKeyDown={(e) => e.key === "Enter" && saveChanges()}
             />
             <div className="text-red-500 text-sm">
               {settingsError?.password || " "}
@@ -338,6 +346,7 @@ export default function ProfileSettings() {
               }
               className={`w-full p-3 rounded-lg shadow-sm dark:bg-black focus:outline-none border border-transparent focus:border-blue-light ${settingsError?.new_password ? "border-red-light dark:border-red-dark" : ""}`}
               onFocus={() => setSettingsError(null)}
+              onKeyDown={(e) => e.key === "Enter" && saveChanges()}
             />
             <div className="text-red-500 text-sm">
               {settingsError?.new_password || " "}
