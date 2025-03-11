@@ -55,7 +55,7 @@ export default function Leaderboard() {
                     <Link
                       href={`/profile/${item.uuid}`}
                       key={item.uuid}
-                      className="p-2 grid grid-cols-[7.5%,7.5%,30%,10%,37.5%,7.5%] text-center items-center font-bold text-3xl bg-black rounded-lg hover:scale-105 transition-all duration-300 ease-in-out"
+                      className="p-2 grid grid-cols-[7.5%,7.5%,30%,10%,37.5%,7.5%] text-center items-center font-bold text-3xl bg-gray-100 dark:bg-black rounded-lg hover:scale-105 transition-all duration-300 ease-in-out"
                     >
                       <span>{item.position || index}.</span>
                       <span className="flex flex-center">
@@ -64,7 +64,7 @@ export default function Leaderboard() {
                           alt={item.username}
                           width={64}
                           height={64}
-                          className="rounded-lg bg-white"
+                          className="h-[64px] w-[64px] rounded-lg bg-white object-cover"
                         />
                       </span>
                       <span className="text-start truncate">

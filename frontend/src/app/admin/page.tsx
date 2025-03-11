@@ -138,7 +138,7 @@ function TableItem(item: User) {
   return (
     <li
       key={item.uuid}
-      className="p-4 space-x-2 flex text-center items-center font-bold text-3xl bg-black rounded-lg"
+      className="p-4 space-x-2 flex text-center items-center font-bold text-3xl bg-gray-100 dark:bg-black rounded-lg"
     >
       <Link
         href={`/profile/${item.uuid}`}
@@ -149,7 +149,7 @@ function TableItem(item: User) {
           alt={item.username}
           width={64}
           height={64}
-          className="min-h-[64px] min-w-[64px] rounded-lg bg-white mr-2"
+          className="h-[64px] w-[64px] rounded-lg bg-white mr-2 object-cover"
         />
         <span className="truncate max-w-[40vw]">{item.username}</span>
         <span className="text-gray-400 ml-1">({item.elo})</span>
