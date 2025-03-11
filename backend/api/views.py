@@ -802,6 +802,10 @@ class TopView(APIView):
         paginated_users = paginator.paginate_queryset(filtered_users, request)
         
         serializer = CustomUserSerializerView(paginated_users, many=True)
+
+        page_number = request.GET.get("page", 1)  # Default to 1 if not provided
+        page_size = request.GET.get("page_size", paginator.page_size)
+
         try:
             page_number = int(page_number)
             page_size = int(page_size)
