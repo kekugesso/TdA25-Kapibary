@@ -204,6 +204,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         game = Game.objects.get(uuid=uuid)
         serializer = GameSerializerMultiplayer(game)
         data = serializer.data
+        data.pop("uuid")
         return data
 
     @sync_to_async

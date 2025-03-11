@@ -127,7 +127,7 @@ class GameSerializerMultiplayer(serializers.ModelSerializer):
             [type]: [description]
         """
         model = Game
-        fields = ['board', 'gameType', 'game_status', 'gameCode']
+        fields = ['board', 'gameType', 'game_status', 'gameCode', 'uuid']
 
 class QueryUsersSerializerCreate(serializers.ModelSerializer):
     class Meta:

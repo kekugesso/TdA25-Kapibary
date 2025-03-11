@@ -802,12 +802,23 @@ class TopView(APIView):
         paginated_users = paginator.paginate_queryset(filtered_users, request)
         
         serializer = CustomUserSerializerView(paginated_users, many=True)
+        try:
+            page_number = int(page_number)
+            page_size = int(page_size)
+        except ValueError:
+            page_number = 1
+            page_size = paginator.page_size or len(serializer.data)
+
+        start_position = (page_number - 1) * page_size
+
         result = [count_results(user["uuid"], user) for user in serializer.data]
-        if(len(serializer.data) == 1):
+
+        if len(serializer.data) == 1:
             result = [count_position(user["uuid"], user) for user in serializer.data]
         else:
             for i in range(len(result)):
-                result[i]["position"] = i+1
+                result[i]["position"] = start_position + i + 1
+
         return paginator.get_paginated_response(result)
 
 def is_valid_password(password):
