@@ -101,7 +101,7 @@ export function GameManager({
       setOpponentTime(null);
     }
     const interval = setInterval(() => {
-      if (!gameEndData && (userTime === 0 || opponentTime === 0)) {
+      if (!gameEndData && (userTime <= 0 || opponentTime <= 0)) {
         sendMessage({ time: true } as GameTimeLimit);
         console.log("Time limit reached");
         clearInterval(interval);
@@ -134,11 +134,9 @@ export function GameManager({
           ? "O"
           : "X",
       );
-      if (data.timers) {
-        setUserTime(symbol === "X" ? data.timers.X.time : data.timers.O.time);
-        setOpponentTime(
-          symbol === "X" ? data.timers.O.time : data.timers.X.time,
-        );
+      if (data.time) {
+        setUserTime(symbol === "X" ? data.time.X.time : data.time.O.time);
+        setOpponentTime(symbol === "X" ? data.time.O.time : data.time.X.time);
       }
       setIsLoading(false);
     },
