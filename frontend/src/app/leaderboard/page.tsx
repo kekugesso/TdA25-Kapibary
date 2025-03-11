@@ -67,7 +67,9 @@ export default function Leaderboard() {
                           className="rounded-lg bg-white"
                         />
                       </span>
-                      <span className="text-start">{item.username}</span>
+                      <span className="text-start truncate">
+                        {item.username}
+                      </span>
                       <span>{`${item.wins}/${item.draws}/${item.losses}`}</span>
                       <span />
                       <span>{item.elo}</span>
