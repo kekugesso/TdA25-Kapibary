@@ -31,7 +31,7 @@ export default function GameHistoryTable({
   return (
     <div className="w-full min-h-[300px] rounded-lg border text-center overflow-hidden">
       {/* Thead */}
-      <div className="grid grid-cols-[10%,35%,10%,35%,10%] bg-black-light dark:bg-blue-dark">
+      <div className="grid grid-cols-[10%,35%,10%,35%,10%] bg-blue-light dark:bg-blue-dark text-white">
         <div className="border-b p-2 flex flex-center">Datum</div>
         <div className="border-l border-b p-2 flex flex-center">
           <Xicon turn="X" height="16px" width="16px" />
@@ -100,7 +100,9 @@ export default function GameHistoryTable({
           </Link>
         ))}
         {gameHistory.length === 0 && (
-          <div className="flex flex-center h-full">No games played yet...</div>
+          <div className="flex flex-center h-[295px]">
+            Žádné hry nebyly nalezeny...
+          </div>
         )}
       </div>
     </div>
