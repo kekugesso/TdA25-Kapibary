@@ -93,6 +93,12 @@ class GameStatusSerializerCreate(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class GameStatusSerializerMultiplayer(serializers.ModelSerializer):
+    player = CustomUserSerializerViewGameStatus(read_only=True)
+    class Meta:
+        model = GameStatus
+        fields = ['player', 'elo', 'symbol', 'result']
+
 class GameStatusSerializerView(serializers.ModelSerializer):
     player = CustomUserSerializerViewGameStatus(read_only=True)
     class Meta:
@@ -110,7 +116,7 @@ class GameSerializerMultiplayer(serializers.ModelSerializer):
     Serializer for the Game model
     """
     board = BoardSerializer(many=True, read_only=True)
-    game_status = GameStatusSerializerView(many=True)
+    game_status = GameStatusSerializerMultiplayer(many=True)
     class Meta:
         """Meta class for the GameSerializer
 
@@ -121,7 +127,7 @@ class GameSerializerMultiplayer(serializers.ModelSerializer):
             [type]: [description]
         """
         model = Game
-        fields = ['board', 'uuid', 'gameType', 'game_status', 'gameCode']
+        fields = ['board', 'gameType', 'game_status', 'gameCode']
 
 class QueryUsersSerializerCreate(serializers.ModelSerializer):
     class Meta:

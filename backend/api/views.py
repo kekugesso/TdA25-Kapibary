@@ -631,9 +631,8 @@ def count_results(uuid, data):
     result["draws"] = count_draw
     return result
 
-def  get_game_history(data, uuid_player):
+def get_game_history(data, uuid_player):
     result = []
-    print(data)
     for game in data:
         hello = {}
         opponent = {}

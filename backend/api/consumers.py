@@ -38,6 +38,9 @@ class GameConsumer(AsyncWebsocketConsumer):
         await self.accept()
         game = await self.get_game(uuid)
         gamedata = await self.get_game_data(uuid)
+        dataconsumer = self.data[uuid]
+        if(dataconsumer.get("timer") is not None):
+            gamedata["time"] = await self.get_timer_for_spectator(dataconsumer.get("timer"), dataconsumer.get("start_time"), dataconsumer.get("tah"))
         matrix = [["" for _ in range(15)] for _ in range(15)]
         for symbol in gamedata.get("board", []):
             matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
@@ -45,13 +48,20 @@ class GameConsumer(AsyncWebsocketConsumer):
         if(game.anonymousToken is not None):
             self.data[uuid]["anonymous"] = game.anonymousToken
         gamedata["type"] = "initData"
-        await self.send(text_data=json.dumps(gamedata, default=str))
+        await self.channel_layer.group_send(
+                f"game_{uuid}",
+                {
+                    "type": "game_update",
+                    "message": json.dumps(gamedata)
+                }
+            )
 
     async def disconnect(self, close_code):
         uuid = self.scope["url_route"]["kwargs"]["uuid"]
         await self.channel_layer.group_discard(f"game_{uuid}", self.channel_name)
 
     async def receive(self, text_data):
+        control_time = False
         send = True
         uuid = self.scope["url_route"]["kwargs"]["uuid"]
         data = json.loads(text_data)
@@ -65,7 +75,19 @@ class GameConsumer(AsyncWebsocketConsumer):
                 uuid_player = game_data["anonymous"]
         else:
             uuid_player = None
-        if(data.get("surrender") == True):
+        if(data.get("time") == True):
+            if(await self.control_if_player(uuid, uuid_player)):
+                spend_time = int(time.time() - game_data["start_time"])
+                game_data["timer"][game_data["tah"]]["time"] -= spend_time
+                if(game_data["timer"][game_data["tah"]]["time"] <= 0):
+                    control_time = True
+                    game_data["end"] = await self.get_end_dict(uuid_player, "lose", "timeout", uuid, game_data["friendly"])
+                    opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                    await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", False)
+                else:
+                    game_data["start_time"] = time.time()
+                data["time"] = game_data["timer"][game_data["tah"]]["time"]
+        elif(data.get("surrender") == True):
             if(await self.control_if_player(uuid, uuid_player)):
                 if(game_data["end"] is None):
                     data["type"] = "surrender"
@@ -120,32 +142,34 @@ class GameConsumer(AsyncWebsocketConsumer):
                         spend_time = int(time.time() - game_data["start_time"])
                         game_data["timer"][game_data["tah"]]["time"] -= spend_time
                         if(game_data["timer"][game_data["tah"]]["time"] <= 0):
+                            control_time = True
                             game_data["end"] = await self.get_end_dict(uuid_player, "lose", "timeout", uuid, game_data["friendly"])
                             opponent_uuid = await self.get_opponent(uuid_player, uuid)
                             await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", False)
                         else:
                             game_data["start_time"] = time.time()
                         data["time"] = game_data["timer"][game_data["tah"]]["time"]
-                    data["symbol"] = game_data["tah"]
-                    if(game_data["end"] is None):
-                        await self.save_board(data, uuid)
-                        board = await self.get_list_board(uuid)
-                    win_probality = await self.get_winning_board(board, 5, game_data["tah"])
-                    if win_probality is not None:
-                        game_data["end"] = await self.get_end_dict(uuid_player, "win", "symbol", uuid, game_data["friendly"])
-                        opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                        await self.write_result_to_db(uuid, uuid_player,  opponent_uuid, "win", game_data["friendly"])
-                        await sync_to_async(self.save_win_board)(uuid, win_probality)
-                        game_data["end"]["win_board"] = win_probality
-                    is_draw = await self.is_draw_board(uuid)
-                    if is_draw and game_data["end"] is None:
-                        game_data["end"] = await self.get_end_dict(uuid_player, "draw", "draw", uuid, game_data["friendly"])
-                        opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                        await self.write_result_to_db(uuid, uuid_player, opponent_uuid, "draw", game_data["friendly"])
-                    if game_data["tah"] == "X":
-                        game_data["tah"] = "O"
-                    else:
-                        game_data["tah"] = "X"
+                    if(control_time == False):
+                        data["symbol"] = game_data["tah"]
+                        if(game_data["end"] is None):
+                            await self.save_board(data, uuid)
+                            board = await self.get_list_board(uuid)
+                        win_probality = await self.get_winning_board(board, 5, game_data["tah"])
+                        if win_probality is not None:
+                            game_data["end"] = await self.get_end_dict(uuid_player, "win", "symbol", uuid, game_data["friendly"])
+                            opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                            await self.write_result_to_db(uuid, uuid_player,  opponent_uuid, "win", game_data["friendly"])
+                            await sync_to_async(self.save_win_board)(uuid, win_probality)
+                            game_data["end"]["win_board"] = win_probality
+                        is_draw = await self.is_draw_board(uuid)
+                        if is_draw and game_data["end"] is None:
+                            game_data["end"] = await self.get_end_dict(uuid_player, "draw", "draw", uuid, game_data["friendly"])
+                            opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                            await self.write_result_to_db(uuid, uuid_player, opponent_uuid, "draw", game_data["friendly"])
+                        if game_data["tah"] == "X":
+                            game_data["tah"] = "O"
+                        else:
+                            game_data["tah"] = "X"
                 else:
                     send = False
             else:
@@ -343,10 +367,16 @@ class GameConsumer(AsyncWebsocketConsumer):
             hello = {}
             hello["uuid"] = gamestatus["player"]["uuid"]
             hello["time"] = 480
-            hello["result"] = "unknown"
             players[gamestatus["symbol"]] = hello
         return players
     
+    async def get_timer_for_spectator(self, timer, start_time, tah):
+        if(tah == "X"):
+            timer["X"]["time"] = timer["X"]["time"] - int((time.time() - start_time))
+        else:
+            timer["O"]["time"] = timer["O"]["time"] - int((time.time() - start_time))
+        return timer
+
     async def get_end_dict(self, uuid_player, end, reason, game_uuid, friendly):
         resultjson = {}
         opponent_uuid = await self.get_opponent(uuid_player, game_uuid)
@@ -514,10 +544,10 @@ class GameConsumer(AsyncWebsocketConsumer):
             new_elo = float(game_status.elo) + 40*(saea*(1 + 0.5*(0.5-podilher)))
             if(new_elo < 0):
                 new_elo = 0
-            user = CustomUser.objects.get(uuid=uuid_player)
-            user.elo = new_elo
-            user.save()
             elodifference = new_elo - game_status.elo
+            user = CustomUser.objects.filter(uuid=uuid_player).first()
+            user.elo = user.elo + math.ceil(elodifference)
+            user.save() 
             return math.ceil(elodifference)
 
         if(not friendly):
