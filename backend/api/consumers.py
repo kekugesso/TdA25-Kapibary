@@ -119,59 +119,62 @@ class GameConsumer(AsyncWebsocketConsumer):
             else:
                 send = False
         else:
-            control = await self.control_player(uuid, uuid_player, game_data["tah"])
-            if control:
-                if("draw" in data):
-                    if(game_data["end"] is None):
-                        data["type"] = "draw"
-                        if(game_data["draw_to"] == ""):
-                            opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                            data["draw_to"] = opponent_uuid
-                            game_data["draw_to"] = opponent_uuid
-                        else:
-                            if((game_data["draw_to"] == "anonymous" and uuid_player == self.data[uuid]["anonymous"]) or uuid_player == game_data["draw_to"]):
-                                game_data["end"] = await self.get_end_dict(uuid_player, "draw", "agreed", uuid, game_data["friendly"])
+            if(game_data["end"] is not None):
+                control = await self.control_player(uuid, uuid_player, game_data["tah"])
+                if control:
+                    if("draw" in data):
+                        if(game_data["end"] is None):
+                            data["type"] = "draw"
+                            if(game_data["draw_to"] == ""):
                                 opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                                await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "draw", game_data["friendly"])
+                                data["draw_to"] = opponent_uuid
+                                game_data["draw_to"] = opponent_uuid
                             else:
-                                game_data["draw_to"] = ""
-                                data["draw"] = False
+                                if((game_data["draw_to"] == "anonymous" and uuid_player == self.data[uuid]["anonymous"]) or uuid_player == game_data["draw_to"]):
+                                    game_data["end"] = await self.get_end_dict(uuid_player, "draw", "agreed", uuid, game_data["friendly"])
+                                    opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                                    await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "draw", game_data["friendly"])
+                                else:
+                                    game_data["draw_to"] = ""
+                                    data["draw"] = False
+                        else:
+                            send = False
+                    elif(data.get("row") is not None and data.get("column") is not None and not await sync_to_async(self.if_cell_exist)(uuid, data["row"], data["column"]) and game_data["end"] is None):
+                        data["type"] = "new_symbol"
+                        if not game_data["friendly"]:
+                            spend_time = int(time.time() - game_data["start_time"])
+                            game_data["timer"][game_data["tah"]]["time"] -= spend_time
+                            if(game_data["timer"][game_data["tah"]]["time"] <= 0):
+                                control_time = True
+                                game_data["end"] = await self.get_end_dict(uuid_player, "lose", "timeout", uuid, game_data["friendly"])
+                                opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                                await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", False)
+                            else:
+                                game_data["start_time"] = time.time()
+                            data["time"] = game_data["timer"][game_data["tah"]]["time"]
+                        if(control_time == False):
+                            data["symbol"] = game_data["tah"]
+                            if(game_data["end"] is None):
+                                await self.save_board(data, uuid)
+                                board = await self.get_list_board(uuid)
+                            win_probality = await self.get_winning_board(board, 5, game_data["tah"])
+                            if win_probality is not None:
+                                game_data["end"] = await self.get_end_dict(uuid_player, "win", "symbol", uuid, game_data["friendly"])
+                                opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                                await self.write_result_to_db(uuid, uuid_player,  opponent_uuid, "win", game_data["friendly"])
+                                await sync_to_async(self.save_win_board)(uuid, win_probality)
+                                game_data["end"]["win_board"] = win_probality
+                            is_draw = await self.is_draw_board(uuid)
+                            if is_draw and game_data["end"] is None:
+                                game_data["end"] = await self.get_end_dict(uuid_player, "draw", "draw", uuid, game_data["friendly"])
+                                opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                                await self.write_result_to_db(uuid, uuid_player, opponent_uuid, "draw", game_data["friendly"])
+                            if game_data["tah"] == "X":
+                                game_data["tah"] = "O"
+                            else:
+                                game_data["tah"] = "X"
                     else:
                         send = False
-                elif(data.get("row") is not None and data.get("column") is not None and not await sync_to_async(self.if_cell_exist)(uuid, data["row"], data["column"]) and game_data["end"] is None):
-                    data["type"] = "new_symbol"
-                    if not game_data["friendly"]:
-                        spend_time = int(time.time() - game_data["start_time"])
-                        game_data["timer"][game_data["tah"]]["time"] -= spend_time
-                        if(game_data["timer"][game_data["tah"]]["time"] <= 0):
-                            control_time = True
-                            game_data["end"] = await self.get_end_dict(uuid_player, "lose", "timeout", uuid, game_data["friendly"])
-                            opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                            await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "lose", False)
-                        else:
-                            game_data["start_time"] = time.time()
-                        data["time"] = game_data["timer"][game_data["tah"]]["time"]
-                    if(control_time == False):
-                        data["symbol"] = game_data["tah"]
-                        if(game_data["end"] is None):
-                            await self.save_board(data, uuid)
-                            board = await self.get_list_board(uuid)
-                        win_probality = await self.get_winning_board(board, 5, game_data["tah"])
-                        if win_probality is not None:
-                            game_data["end"] = await self.get_end_dict(uuid_player, "win", "symbol", uuid, game_data["friendly"])
-                            opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                            await self.write_result_to_db(uuid, uuid_player,  opponent_uuid, "win", game_data["friendly"])
-                            await sync_to_async(self.save_win_board)(uuid, win_probality)
-                            game_data["end"]["win_board"] = win_probality
-                        is_draw = await self.is_draw_board(uuid)
-                        if is_draw and game_data["end"] is None:
-                            game_data["end"] = await self.get_end_dict(uuid_player, "draw", "draw", uuid, game_data["friendly"])
-                            opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                            await self.write_result_to_db(uuid, uuid_player, opponent_uuid, "draw", game_data["friendly"])
-                        if game_data["tah"] == "X":
-                            game_data["tah"] = "O"
-                        else:
-                            game_data["tah"] = "X"
                 else:
                     send = False
             else:
