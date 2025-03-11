@@ -4,4 +4,5 @@ export enum MessageType {
   draw = "draw",
   rematch = "rematch",
   surrender = "surrender",
+  time = "time",
 }

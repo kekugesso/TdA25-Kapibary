@@ -13,8 +13,10 @@ import {
   GameSurrender,
   GameTimeLimit,
   GameWantDraw,
+  GameWantRematch,
   GameWantSurrender,
   GetGameMove,
+  GetGameTime,
 } from "@/types/multiplayer/GameEvents";
 import { getCookie } from "cookies-next/client";
 import React, {
@@ -27,6 +29,8 @@ import React, {
 } from "react";
 import { MessageType } from "@/types/multiplayer/MessageType";
 import GameWantModal from "./GameWantModal";
+import { GameResult } from "@/types/multiplayer/GameResult";
+import { useRouter } from "next/navigation";
 
 export interface GameManagerContextProps {
   isLoading: boolean;
@@ -67,6 +71,7 @@ export function GameManager({
     logoutAnonymus,
   } = useAuth();
   const { displayMessage } = useErrorModal();
+  const router = useRouter();
 
   const websocketRef = useRef<WebSocket | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,11 +100,14 @@ export function GameManager({
   );
 
   useEffect(() => {
-    if (!userTime || !opponentTime) return;
-    if (gameEndData) {
-      setUserTime(null);
-      setOpponentTime(null);
-    }
+    if (
+      !userTime ||
+      !opponentTime ||
+      gameEndData ||
+      data?.game_status[0].result !== GameResult.UNKNOWN
+    )
+      return;
+
     const interval = setInterval(() => {
       if (!gameEndData && (userTime <= 0 || opponentTime <= 0)) {
         sendMessage({ time: true } as GameTimeLimit);
@@ -115,7 +123,15 @@ export function GameManager({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [gameEndData, userTime, opponentTime, turn, userSymbol, sendMessage]);
+  }, [
+    gameEndData,
+    userTime,
+    opponentTime,
+    turn,
+    userSymbol,
+    sendMessage,
+    data,
+  ]);
 
   const handleInitialData = useCallback(
     (data: MultiplayerGame) => {
@@ -163,13 +179,41 @@ export function GameManager({
     [userSymbol],
   );
 
-  const handleDraw = useCallback((drawMessage: GameWantDraw) => {
-    if (drawMessage.end) setGameEndData(drawMessage.end);
-    else setWantDraw(true);
-  }, []);
-  const handleRematch = useCallback(() => {
-    setWantRematch(true);
-  }, []);
+  const handleTime = useCallback(
+    (timeMessage: GetGameTime) => {
+      if (timeMessage.time) {
+        setUserTime(
+          userSymbol === "X"
+            ? timeMessage.time.X.time
+            : timeMessage.time.O.time,
+        );
+        setOpponentTime(
+          userSymbol === "X"
+            ? timeMessage.time.O.time
+            : timeMessage.time.X.time,
+        );
+      } else if (timeMessage.end) setGameEndData(timeMessage.end);
+    },
+    [userSymbol],
+  );
+
+  const handleDraw = useCallback(
+    (drawMessage: GameWantDraw) => {
+      if (drawMessage.end) setGameEndData(drawMessage.end);
+      if (drawMessage.draw_to === (isLogged ? user?.uuid : "anonymus"))
+        setWantDraw(true);
+    },
+    [isLogged, user],
+  );
+  const handleRematch = useCallback(
+    (rematchMessage: GameWantRematch) => {
+      if (rematchMessage.new_game)
+        router.push(`/multiplayer/${rematchMessage.new_game}`);
+      if (rematchMessage.rematch_to === (isLogged ? user?.uuid : "anonymus"))
+        setWantRematch(true);
+    },
+    [isLogged, user, router],
+  );
   const handleSurrender = useCallback((surrenderMessage: GameWantSurrender) => {
     setGameEndData(surrenderMessage.end);
   }, []);
@@ -194,9 +238,11 @@ export function GameManager({
         case MessageType.draw:
           return handleDraw(message as GameWantDraw);
         case MessageType.rematch:
-          return handleRematch();
+          return handleRematch(message as GameWantRematch);
         case MessageType.surrender:
           return handleSurrender(message as GameWantSurrender);
+        case MessageType.time:
+          return handleTime(message as GetGameTime);
         default:
           console.error("Failed to parse WebSocket message:", event.data);
           displayMessage("Invalid message type from server");
@@ -208,6 +254,7 @@ export function GameManager({
       handleDraw,
       handleRematch,
       handleSurrender,
+      handleTime,
       displayMessage,
     ],
   );
@@ -269,9 +316,11 @@ export function GameManager({
           sendMessage({ surrender: true } as GameSurrender);
         },
         draw: () => {
+          setWantDraw(true);
           sendMessage({ draw: true } as GameDraw);
         },
         rematch: () => {
+          setWantRematch(true);
           sendMessage({ rematch: true } as GameRematch);
         },
       }}

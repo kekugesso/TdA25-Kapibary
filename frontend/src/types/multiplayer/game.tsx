@@ -8,16 +8,7 @@ export type MultiplayerGame = {
   gameType: GameType;
   gameCode: string;
   game_status: GameStatus[];
-  time?: {
-    X: {
-      time: number;
-      uuid: string;
-    };
-    O: {
-      time: number;
-      uuid: string;
-    };
-  };
+  time?: GameTime;
 };
 
 export type GameStatus = {
@@ -34,4 +25,15 @@ export type GameStatusPlayer = {
   uuid: string;
   username: string;
   avatar?: string;
+};
+
+export type GameTime = {
+  X: {
+    time: number;
+    uuid?: string;
+  };
+  O: {
+    time: number;
+    uuid?: string;
+  };
 };
