@@ -3,6 +3,7 @@ import { Oicon, Xicon } from "../game/Icons";
 import Link from "next/link";
 import { GameHistory } from "@/types/multiplayer/GameHistory";
 import { GameResult } from "@/types/multiplayer/GameResult";
+import { useTheme } from "next-themes";
 
 export default function GameHistoryTable({
   userData,
@@ -11,6 +12,7 @@ export default function GameHistoryTable({
   userData: User;
   gameHistory: GameHistory[];
 }) {
+  const { theme } = useTheme();
   const getResult = (game: GameHistory) => {
     switch (game.result) {
       case GameResult.WIN:
@@ -34,7 +36,12 @@ export default function GameHistoryTable({
       <div className="grid grid-cols-[10%,35%,10%,35%,10%] bg-blue-light dark:bg-blue-dark text-white">
         <div className="border-b p-2 flex flex-center">Datum</div>
         <div className="border-l border-b p-2 flex flex-center">
-          <Xicon turn="X" height="16px" width="16px" />
+          <Xicon
+            turn="X"
+            height="16px"
+            width="16px"
+            stroke={theme === "dark" ? "#E31838" : "#AB2E58"}
+          />
           <span className="ml-1">Hráč 1 (ELO)</span>
         </div>
         <div className="border-l border-b p-2 flex flex-center bg-red-light dark:bg-red-dark">
@@ -42,7 +49,12 @@ export default function GameHistoryTable({
         </div>
         <div className="border-l border-b p-2 flex flex-center">
           <span className="mr-1">Hráč 2 (ELO)</span>
-          <Oicon turn="O" height="16px" width="16px" />
+          <Oicon
+            turn="O"
+            height="16px"
+            width="16px"
+            stroke={theme === "dark" ? "#0070BB" : "#395A9A"}
+          />
         </div>
         <div className="border-l border-b p-2 flex flex-center">± ELO</div>
       </div>
@@ -66,7 +78,7 @@ export default function GameHistoryTable({
                 </>
               ) : (
                 <>
-                  {game.opponent.username}
+                  <span className="truncate">{game.opponent.username}</span>
                   <span className="ml-1 text-gray-600 dark:text-gray-300">
                     ({game.opponent.elo})
                   </span>
@@ -84,7 +96,7 @@ export default function GameHistoryTable({
                 </>
               ) : (
                 <>
-                  {userData.username}
+                  <span className="truncate">{userData.username}</span>
                   <span className="ml-1 text-gray-600 dark:text-gray-300">
                     ({game.elo})
                   </span>
