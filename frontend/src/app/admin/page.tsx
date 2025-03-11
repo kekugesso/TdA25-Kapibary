@@ -47,14 +47,14 @@ export default function Admin() {
   };
 
   const banUserMutation = useMutation({
-    mutationFn: async (uuid: string) => {
+    mutationFn: async ({ uuid, state }: { uuid: string; state: boolean }) => {
       const res = await fetch(`/api/users/${uuid}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Token ${getCookie("authToken")}`,
         },
-        body: JSON.stringify({ is_banned: !user?.is_banned || true }),
+        body: JSON.stringify({ is_banned: state }),
       });
       if (!res.ok) {
         throw new Error("Failed to ban user");
@@ -99,7 +99,9 @@ export default function Admin() {
   ) : (
     <Suspense fallback={<Loading />}>
       <AdminManager
-        banAction={(uuid: string) => banUserMutation.mutate(uuid)}
+        banAction={(uuid: string, state: boolean) =>
+          banUserMutation.mutate({ uuid, state })
+        }
         changeEloAction={(uuid: string, elo: number) =>
           changeEloMutation.mutate({ uuid, elo })
         }
@@ -136,7 +138,7 @@ function TableItem(item: User) {
   return (
     <li
       key={item.uuid}
-      className="p-4 space-x-2 grid grid-cols-[15%,37%,25.5%,22.5%] text-center items-center font-bold text-3xl bg-black rounded-lg"
+      className="p-4 space-x-2 flex text-center items-center font-bold text-3xl bg-black rounded-lg"
     >
       <Link
         href={`/profile/${item.uuid}`}
@@ -149,9 +151,25 @@ function TableItem(item: User) {
           height={64}
           className="min-h-[64px] min-w-[64px] rounded-lg bg-white mr-2"
         />
-        {item.username} <span className="text-gray-400 ml-1">({item.elo})</span>
+        <span className="truncate max-w-[40vw]">{item.username}</span>
+        <span className="text-gray-400 ml-1">({item.elo})</span>
       </Link>
-      <span />
+      <span className="flex-1" />
+      <button
+        onClick={() => ban(item.username, item.uuid, item.is_banned)}
+        className={`flex flex-center rounded-lg p-2 ${item.is_banned ? "text-blue-light dark:text-blue-dark" : "text-red-light dark:text-red-dark"}`}
+      >
+        <div
+          className={`w-[38px] h-[38px] mr-1 ${item.is_banned ? "bg-blue-light dark:bg-blue-dark" : "bg-red-light dark:bg-red-dark"}`}
+          style={{
+            WebkitMaskImage: "url(/img/ban_icon.svg)",
+            WebkitMaskSize: "contain",
+            WebkitMaskRepeat: "no-repeat",
+            WebkitMaskPosition: "center",
+          }}
+        ></div>
+        {item.is_banned ? "Unban" : "Ban"}
+      </button>
       <button
         onClick={() => changeElo(item.username, item.uuid, item.elo)}
         className="rounded-lg p-2 flex flex-center"
@@ -166,21 +184,6 @@ function TableItem(item: User) {
           }}
         ></div>
         Úprava Ela
-      </button>
-      <button
-        onClick={() => ban(item.username, item.uuid)}
-        className={`flex flex-center rounded-lg p-2 ${item.is_banned ? "text-blue-light dark:text-blue-dark" : "text-red-light dark:text-red-dark"}`}
-      >
-        <div
-          className={`w-[38px] h-[38px] mr-1 ${item.is_banned ? "bg-blue-light dark:bg-blue-dark" : "bg-red-light dark:bg-red-dark"}`}
-          style={{
-            WebkitMaskImage: "url(/img/ban_icon.svg)",
-            WebkitMaskSize: "contain",
-            WebkitMaskRepeat: "no-repeat",
-            WebkitMaskPosition: "center",
-          }}
-        ></div>
-        {item.is_banned ? "Unban" : "Ban"}
       </button>
     </li>
   );

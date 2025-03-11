@@ -3,10 +3,11 @@
 import React, { createContext, useContext, useState } from "react";
 import BanModal from "./BanModal";
 import ChangeEloModal from "./ChangeEloModal";
+import UnBanModal from "./UnBanModal";
 
 export interface AdminManagerContextProps {
   isLoading: boolean;
-  ban: (username: string, uuid: string) => void;
+  ban: (username: string, uuid: string, state: boolean) => void;
   changeElo: (username: string, uuid: string, elo: number) => void;
 }
 
@@ -20,7 +21,7 @@ export function AdminManager({
   changeEloAction,
 }: {
   children: React.ReactNode;
-  banAction: (uuid: string) => void;
+  banAction: (uuid: string, state: boolean) => void;
   changeEloAction: (uuid: string, elo: number) => void;
 }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -29,10 +30,12 @@ export function AdminManager({
   const [targetUuid, setTargetUuid] = useState<string | null>(null);
   const [targetUsername, setTargetUsername] = useState<string | null>(null);
   const [targetElo, setTargetElo] = useState<number | null>(null);
+  const [targetBanState, setTargetBanState] = useState<boolean | null>(null);
 
-  const openBanModal = (username: string, uuid: string) => {
+  const openBanModal = (username: string, uuid: string, state: boolean) => {
     setTargetUuid(uuid);
     setTargetUsername(username);
+    setTargetBanState(state);
     setBanModalOpen(true);
   };
 
@@ -53,10 +56,10 @@ export function AdminManager({
     setEloModalOpen(false);
   };
 
-  const ban = (uuid: string) => {
+  const ban = (uuid: string, state: boolean) => {
     setIsLoading(true);
     try {
-      banAction(uuid);
+      banAction(uuid, state);
       console.log("Ban action executed:", uuid);
     } finally {
       setIsLoading(false);
@@ -80,13 +83,22 @@ export function AdminManager({
       value={{ isLoading, ban: openBanModal, changeElo: openEloModal }}
     >
       {children}
-      {isBanModalOpen && targetUuid && targetUsername && (
-        <BanModal
-          username={targetUsername}
-          onConfirm={() => ban(targetUuid)}
-          onCancel={closeBanModal}
-        />
-      )}
+      {isBanModalOpen &&
+        targetUuid &&
+        targetUsername &&
+        (targetBanState ? (
+          <UnBanModal
+            username={targetUsername}
+            onConfirm={() => ban(targetUuid, false)}
+            onCancel={closeBanModal}
+          />
+        ) : (
+          <BanModal
+            username={targetUsername}
+            onConfirm={() => ban(targetUuid, true)}
+            onCancel={closeBanModal}
+          />
+        ))}
       {isEloModalOpen && targetUuid && targetUsername && targetElo && (
         <ChangeEloModal
           username={targetUsername}
