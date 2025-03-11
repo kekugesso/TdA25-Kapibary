@@ -61,7 +61,7 @@ export default function RegisterForm({
           htmlFor="login"
           className={`text-md ${error?.email ? "text-red-light dark:text-red-dark" : ""}`}
         >
-          Uživatelské jméno
+          Email
         </label>
         <input
           type="email"
