@@ -22,7 +22,7 @@ export default function GameHistoryGraph({
   const yBottom = 290;
   const yTop = 10;
 
-  const elos = sortedHistory.map((g) => g.elo);
+  const elos = sortedHistory.map((g) => g.elo + g.elo_change);
   const minElo = Math.min(...elos);
   const maxElo = Math.max(...elos);
 
