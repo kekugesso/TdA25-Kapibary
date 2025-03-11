@@ -58,6 +58,7 @@ export default function LoginRegister() {
   ): RegistrtionError | void => {
     if (!registerCredentials.username)
       return { username: ["Uživatelské jméno je povinné"] };
+    if (!registerCredentials.email) return { email: ["Email je povinný"] };
     if (!registerCredentials.password)
       return { password: ["Heslo je povinné"] };
 

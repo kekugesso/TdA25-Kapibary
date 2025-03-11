@@ -72,6 +72,7 @@ export default function ProfileSettings() {
   const Validation = (settings: UserSettings): UserSettingsError | void => {
     if (!settings.username)
       return { username: ["Uživatelské jméno je povinné"] };
+    if (!settings.email) return { email: ["Email je povinný"] };
     if (!settings.password) return { password: ["Heslo je povinné"] };
 
     // password validation
