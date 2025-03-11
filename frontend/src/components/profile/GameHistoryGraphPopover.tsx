@@ -37,7 +37,7 @@ export default function GraphPopover({
         side="top"
         sideOffset={10}
       >
-        <p>Elo: {game.elo}</p>
+        <p>Elo: {game.elo + game.elo_change}</p>
         <p>{formatDate(game.createdAt)}</p>
         <PopoverArrow />
       </PopoverContent>

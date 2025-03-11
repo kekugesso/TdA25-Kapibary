@@ -39,7 +39,7 @@ export default function GameHistoryGraph({
   let pathData = "";
   sortedHistory.forEach((game, index) => {
     const x = xScale(index);
-    const y = yScale(game.elo);
+    const y = yScale(game.elo + game.elo_change);
     if (index === 0) pathData += `M ${x} ${y}`;
     else pathData += ` L ${x} ${y}`;
   });
@@ -49,8 +49,8 @@ export default function GameHistoryGraph({
   return (
     <svg
       key="graph"
-      width="100%"
-      height="100%"
+      width="auto"
+      height={`${svgHeight}px`}
       viewBox={`0 0 ${svgWidth} ${svgHeight}`}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
@@ -83,7 +83,7 @@ export default function GameHistoryGraph({
       <path d={pathData} strokeWidth="2" stroke={strokeColor} />
       {sortedHistory.map((game, index) => {
         const cx = xScale(index);
-        const cy = yScale(game.elo);
+        const cy = yScale(game.elo + game.elo_change);
 
         return (
           <GraphPopover key={`${cx}-${cy}`} game={game}>
