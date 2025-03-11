@@ -69,6 +69,8 @@ export default function Profile({
       setLoading(false);
       return;
     }
+    if (!fetchUser.isError && !fetchUser.isLoading && !fetchUser.isSuccess)
+      fetchUser.refetch();
     if (fetchUser.isSuccess) {
       setUser(fetchUser.data);
       setLoading(false);
@@ -110,7 +112,7 @@ export default function Profile({
           onClick={() => router.push("/profile/settings")}
         />
       )}
-      <div className="flex space-x-5 p-2 flex-col sm:flex-row flex-center sm:justify-normal sm:items-center">
+      <div className="flex sm:space-x-5 p-2 flex-col sm:flex-row flex-center sm:justify-normal sm:items-center">
         <Image
           src={user.avatar || "/img/avatar.svg"}
           alt="Profile Picture"
@@ -118,21 +120,24 @@ export default function Profile({
           height={150}
           className="w-[150px] h-[150px] rounded-lg bg-gray-100 dark:bg-white-dark object-cover"
         />
-        <div className="flex flex-col space-y-2">
-          <h1 className="text-5xl text-center sm:text-left font-bold max-w-[300px] sm:max-w-[55vw] truncate">
+        <div className="flex flex-col space-y-2 w-full">
+          <h1 className="w-full sm:max-w-[55vw] text-5xl text-center sm:text-left font-bold truncate">
             {user.username}
           </h1>
           <p className="text-sm text-center sm:text-left">
             S námi od: {formatedDate(user.createdAt)}
           </p>
-          <div className="flex h-full space-x-10">
+          <div className="flex flex-col sm:flex-row h-full sm:space-x-10">
             {[
               { title: "Výhry:", value: user.wins },
               { title: "Remízy:", value: user.draws },
               { title: "Prohry:", value: user.losses },
               { title: "Elo:", value: user.elo },
             ].map(({ title, value }) => (
-              <div key={title} className="flex flex-col h-full justify-between">
+              <div
+                key={title}
+                className="flex sm:flex-col h-full justify-between"
+              >
                 <div className="text-xl">{title}</div>
                 <div className="font-bold text-4xl text-center">{value}</div>
               </div>
@@ -147,7 +152,7 @@ export default function Profile({
           <GameHistoryGraph gameHistory={gameHistory} />
         )}
       </div>
-      <div className="relative mt-5 max-h-[300px] w-full">
+      <div className="relative mt-5 w-full">
         {!gameHistory || !user ? (
           <Loading height="min-h-[150px]" />
         ) : (
