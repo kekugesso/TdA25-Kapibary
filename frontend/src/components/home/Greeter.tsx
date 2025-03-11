@@ -41,9 +41,9 @@ export default function Greeter() {
               : gradient +
                 " from-85% translate-x-[50%] opacity-0 pointer-events-none"
           }`}
-          href={"/new-game"}
+          href={"/multiplayer"}
         >
-          Nová hra
+          Multiplayer
         </Link>
         <button
           className={`${
