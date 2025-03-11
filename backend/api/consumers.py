@@ -38,6 +38,8 @@ class GameConsumer(AsyncWebsocketConsumer):
         await self.accept()
         game = await self.get_game(uuid)
         gamedata = await self.get_game_data(uuid)
+        if(gamedata["game_status"][0]["result"] != "unknown"):
+            self.data[uuid]["end"] = True
         dataconsumer = self.data[uuid]
         if(dataconsumer.get("timer") is not None):
             gamedata["time"] = await self.get_timer_for_spectator(dataconsumer.get("timer"), dataconsumer.get("start_time"), dataconsumer.get("tah"))
