@@ -28,6 +28,7 @@ class CustomUser(AbstractUser):
     elo = models.IntegerField(null=False)
     avatar = models.TextField(null=False, default="")
     is_banned = models.BooleanField(default=False)
+    email = models.EmailField(null=False, unique=True)
 
     def __repr__(self):
         """returns user uuid

@@ -444,6 +444,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                                     "message": "Složil jsi 5 symbolů do řady."}
             resultjson[lose_symbol] = {"result": "lose",
                                     "message": "Soupeř složil 5 symbolů do řady."}
+        self.data[game_uuid]["end"] = resultjson
         return resultjson
 
     @sync_to_async
