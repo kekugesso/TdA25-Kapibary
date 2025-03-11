@@ -77,7 +77,27 @@ class GameConsumer(AsyncWebsocketConsumer):
                 uuid_player = game_data["anonymous"]
         else:
             uuid_player = None
-        if(data.get("time") == True):
+        if("draw" in data):
+            if(await self.control_if_player(uuid, uuid_player)):
+                if(game_data["end"] is None):
+                    data["type"] = "draw"
+                    if(game_data["draw_to"] == ""):
+                        opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                        data["draw_to"] = opponent_uuid
+                        game_data["draw_to"] = opponent_uuid
+                    else:
+                        if((game_data["draw_to"] == "anonymous" and uuid_player == self.data[uuid]["anonymous"]) or uuid_player == game_data["draw_to"]):
+                            game_data["end"] = await self.get_end_dict(uuid_player, "draw", "agreed", uuid, game_data["friendly"])
+                            opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                            await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "draw", game_data["friendly"])
+                        else:
+                            game_data["draw_to"] = ""
+                            data["draw"] = False
+                else:
+                    send = False
+            else:
+                send = False
+        elif(data.get("time") == True):
             if(await self.control_if_player(uuid, uuid_player)):
                 data["type"] = "time"
                 spend_time = int(time.time() - game_data["start_time"])
@@ -123,24 +143,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         else:
             control = await self.control_player(uuid, uuid_player, game_data["tah"])
             if control:
-                if("draw" in data):
-                    if(game_data["end"] is None):
-                        data["type"] = "draw"
-                        if(game_data["draw_to"] == ""):
-                            opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                            data["draw_to"] = opponent_uuid
-                            game_data["draw_to"] = opponent_uuid
-                        else:
-                            if((game_data["draw_to"] == "anonymous" and uuid_player == self.data[uuid]["anonymous"]) or uuid_player == game_data["draw_to"]):
-                                game_data["end"] = await self.get_end_dict(uuid_player, "draw", "agreed", uuid, game_data["friendly"])
-                                opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                                await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "draw", game_data["friendly"])
-                            else:
-                                game_data["draw_to"] = ""
-                                data["draw"] = False
-                    else:
-                        send = False
-                elif(data.get("row") is not None and data.get("column") is not None and not await sync_to_async(self.if_cell_exist)(uuid, data["row"], data["column"]) and game_data["end"] is None):
+                if(data.get("row") is not None and data.get("column") is not None and not await sync_to_async(self.if_cell_exist)(uuid, data["row"], data["column"]) and game_data["end"] is None):
                     data["type"] = "new_symbol"
                     if not game_data["friendly"]:
                         spend_time = int(time.time() - game_data["start_time"])
