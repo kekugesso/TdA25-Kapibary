@@ -454,7 +454,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         gameStatus = data["game_status"]
         data = []
         for game_status in gameStatus:
-            games = GameStatus.objects.filter(game=game_status["game"])
+            games = GameStatus.objects.filter(game=uuid_game)
             serializer = GameStatusForUserSerializerView(games, many=True)
             data.append(serializer.data)
         result = []
@@ -484,7 +484,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         gameStatus = data["game_status"]
         data = []
         for game_status in gameStatus:
-            games = GameStatus.objects.filter(game=game_status["game"])
+            games = GameStatus.objects.filter(game=uuid_game)
             serializer = GameStatusForUserSerializerView(games, many=True)
             data.append(serializer.data)
         result = []
