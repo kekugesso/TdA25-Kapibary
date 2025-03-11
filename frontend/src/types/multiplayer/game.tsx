@@ -8,7 +8,7 @@ export type MultiplayerGame = {
   gameType: GameType;
   gameCode: string;
   game_status: GameStatus[];
-  timers?: {
+  time?: {
     X: {
       time: number;
       uuid: string;
