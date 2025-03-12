@@ -7,6 +7,7 @@ import GameLoadingScreen from "@/components/multiplayer/game/GameLoadingScreen";
 import GameScreen from "@/components/multiplayer/game/GameScreen";
 import UserInfo from "@/components/multiplayer/game/UserInfo";
 import DissableFooter from "@/components/core/DissableFooter";
+import MobileUserInfo from "@/components/multiplayer/game/MobileUserInfo";
 
 export default function MultiplayerGame({
   params,
@@ -34,16 +35,17 @@ export default function MultiplayerGame({
       <GameLoadingScreen>
         <article className="flex flex-col mid:flex-row">
           <span className="flex-1" />
+          <MobileUserInfo className="mid:hidden flex items-center justify-evenly" />
           <UserInfo
             symbol="X"
-            className="sm:hidden md:absolute md:opacity-0 mid:static mid:flex mid:opacity-100 md:flex-col flex-center transition-all duration-300 ease-in-out"
+            className="hidden md:absolute md:opacity-0 mid:static mid:flex mid:opacity-100 md:flex-col flex-center transition-all duration-300 ease-in-out"
           />
           <span className="flex-1" />
-          <GameScreen className="flex flex-center flex-col" />
+          <GameScreen className="flex flex-center flex-col my-5 mid:my-0" />
           <span className="flex-1" />
           <UserInfo
             symbol="O"
-            className="sm:hidden md:absolute md:opacity-0 mid:static mid:flex mid:opacity-100 md:flex-col flex-center transition-all duration-300 ease-in-out"
+            className="hidden md:absolute md:opacity-0 mid:static mid:flex mid:opacity-100 md:flex-col flex-center transition-all duration-300 ease-in-out"
           />
           <span className="flex-1" />
         </article>

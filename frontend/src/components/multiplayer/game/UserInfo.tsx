@@ -49,6 +49,11 @@ export default function UserInfo({
             <div className="text-3xl font-bold max-w-[150px] truncate">
               {player?.player.username || "Anonymous"}
             </div>
+            {player?.elo && (
+              <div className="text-2xl font-bold text-gray-400 ml-1">
+                ({player?.elo})
+              </div>
+            )}
           </div>
           <div className="mt-4 w-full">
             {symbol === "X" ? (

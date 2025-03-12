@@ -88,10 +88,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setCookie("anonymus", "true");
   };
   const logoutAnonymus = () => {
-    console.log("Logging out as anonymus");
-    setIsAnonymus(false);
-    deleteCookie("authToken");
-    deleteCookie("anonymus");
+    if (getCookie("anonymus")) {
+      console.log("Logging out as anonymus");
+      setIsAnonymus(false);
+      deleteCookie("authToken");
+      deleteCookie("anonymus");
+    }
   };
 
   const registerMutation = RegisterMutation({

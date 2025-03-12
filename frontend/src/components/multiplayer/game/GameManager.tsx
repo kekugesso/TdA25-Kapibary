@@ -3,7 +3,7 @@
 import { useAuth } from "@/components/core/AuthProvider";
 import { useErrorModal } from "@/components/core/ErrorModalProvider";
 import { BoardType } from "@/types/board/BoardType";
-import { MultiplayerGame } from "@/types/multiplayer/game";
+import { GameTime, MultiplayerGame } from "@/types/multiplayer/game";
 import { GameEnd, SymbolMessage } from "@/types/multiplayer/GameEnd";
 import GameEndModal from "@/components/multiplayer/game/GameEndModal";
 import {
@@ -31,6 +31,7 @@ import { MessageType } from "@/types/multiplayer/MessageType";
 import GameWantModal from "./GameWantModal";
 import { GameResult } from "@/types/multiplayer/GameResult";
 import { useRouter } from "next/navigation";
+import GameInfoModal from "./GameInfoModal";
 
 export interface GameManagerContextProps {
   isLoading: boolean;
@@ -63,13 +64,7 @@ export function GameManager({
   uuid: string;
   children: React.ReactNode;
 }) {
-  const {
-    user,
-    isLogged,
-    loading: authLoading,
-    isAnonymus,
-    logoutAnonymus,
-  } = useAuth();
+  const { user, isLogged, loading: authLoading, logoutAnonymus } = useAuth();
   const { displayMessage } = useErrorModal();
   const router = useRouter();
 
@@ -81,29 +76,33 @@ export function GameManager({
   const [data, setData] = useState<MultiplayerGame | null>(null);
   const [gameBoard, setGameBoard] = useState<BoardType>([]);
   const [gameEndData, setGameEndData] = useState<GameEnd | null>(null);
-  const [winData, setWinData] = useState<SymbolMessage | null>(null);
-  const [wantRematch, setWantRematch] = useState(false);
-  const [wantDraw, setWantDraw] = useState(false);
+  const [endData, setEndData] = useState<SymbolMessage | null>(null);
   const [turn, setTurn] = useState<"X" | "O" | null>(null);
 
   const [userTime, setUserTime] = useState<number | null>(null);
   const [opponentTime, setOpponentTime] = useState<number | null>(null);
+
+  const [wantRematch, setWantRematch] = useState(false);
+  const [openRematchModal, setOpenRematchModal] = useState(false);
+  const [rejectRematch, setRejectRematch] = useState(false);
+
+  const [wantDraw, setWantDraw] = useState(false);
+  const [openDrawModal, setOpenDrawModal] = useState(false);
+  const [rejectDraw, setRejectDraw] = useState(false);
 
   const sendMessage = useCallback(
     (message: object) => {
       if (websocketRef.current?.readyState === WebSocket.OPEN) {
         websocketRef.current.send(JSON.stringify(message));
       } else displayMessage("Failed to contact server!");
-      console.log("Sending message:", message);
     },
     [displayMessage],
   );
 
   useEffect(() => {
     if (
-      !userTime ||
-      !opponentTime ||
-      gameEndData ||
+      userTime === null ||
+      opponentTime === null ||
       data?.game_status[0].result !== GameResult.UNKNOWN
     )
       return;
@@ -111,7 +110,10 @@ export function GameManager({
     const interval = setInterval(() => {
       if (!gameEndData && (userTime <= 0 || opponentTime <= 0)) {
         sendMessage({ time: true } as GameTimeLimit);
-        console.log("Time limit reached");
+        clearInterval(interval);
+        return;
+      }
+      if (gameEndData) {
         clearInterval(interval);
         return;
       }
@@ -133,6 +135,14 @@ export function GameManager({
     data,
   ]);
 
+  const setTimeData = useCallback(
+    (timeData: GameTime) => {
+      setUserTime(userSymbol === "X" ? timeData.X.time : timeData.O.time);
+      setOpponentTime(userSymbol === "X" ? timeData.O.time : timeData.X.time);
+    },
+    [userSymbol],
+  );
+
   const handleInitialData = useCallback(
     (data: MultiplayerGame) => {
       setData(data);
@@ -150,19 +160,14 @@ export function GameManager({
           ? "O"
           : "X",
       );
-      if (data.time) {
-        setUserTime(symbol === "X" ? data.time.X.time : data.time.O.time);
-        setOpponentTime(symbol === "X" ? data.time.O.time : data.time.X.time);
-      }
+      if (data.time) setTimeData(data.time);
       setIsLoading(false);
     },
-    [isLogged, user],
+    [isLogged, user, setTimeData],
   );
 
   const handleMove = useCallback(
     (moveMessage: GetGameMove) => {
-      if (moveMessage.end) setGameEndData(moveMessage.end);
-
       setGameBoard((prevBoard) => {
         const newBoard = [...prevBoard];
         newBoard[moveMessage.row] = [...prevBoard[moveMessage.row]];
@@ -171,48 +176,46 @@ export function GameManager({
       });
       setTurn((prevTurn) => (prevTurn === "X" ? "O" : "X"));
 
-      // TIME
-      if (moveMessage.time)
-        if (moveMessage.symbol === userSymbol) setUserTime(moveMessage.time);
-        else setOpponentTime(moveMessage.time);
+      if (moveMessage.time) setTimeData(moveMessage.time);
+      if (moveMessage.end) setGameEndData(moveMessage.end);
     },
-    [userSymbol],
+    [setTimeData],
   );
 
   const handleTime = useCallback(
     (timeMessage: GetGameTime) => {
-      if (timeMessage.time) {
-        setUserTime(
-          userSymbol === "X"
-            ? timeMessage.time.X.time
-            : timeMessage.time.O.time,
-        );
-        setOpponentTime(
-          userSymbol === "X"
-            ? timeMessage.time.O.time
-            : timeMessage.time.X.time,
-        );
-      } else if (timeMessage.end) setGameEndData(timeMessage.end);
+      if (timeMessage.time) setTimeData(timeMessage.time);
+      if (timeMessage.end) setGameEndData(timeMessage.end);
     },
-    [userSymbol],
+    [setTimeData],
   );
 
   const handleDraw = useCallback(
     (drawMessage: GameWantDraw) => {
+      if (!drawMessage.draw && wantDraw) {
+        setRejectDraw(true);
+        setWantDraw(false);
+        return;
+      }
       if (drawMessage.end) setGameEndData(drawMessage.end);
-      if (drawMessage.draw_to === (isLogged ? user?.uuid : "anonymus"))
-        setWantDraw(true);
+      if (drawMessage.draw_to === (isLogged ? user?.uuid : "anonymous"))
+        setOpenDrawModal(true);
     },
-    [isLogged, user],
+    [isLogged, user, wantDraw],
   );
   const handleRematch = useCallback(
     (rematchMessage: GameWantRematch) => {
+      if (!rematchMessage.rematch && wantRematch) {
+        setRejectRematch(true);
+        setWantRematch(false);
+        return;
+      }
       if (rematchMessage.new_game)
         router.push(`/multiplayer/${rematchMessage.new_game}`);
-      if (rematchMessage.rematch_to === (isLogged ? user?.uuid : "anonymus"))
-        setWantRematch(true);
+      if (rematchMessage.rematch_to === (isLogged ? user?.uuid : "anonymous"))
+        setOpenRematchModal(true);
     },
-    [isLogged, user, router],
+    [isLogged, user, router, wantRematch],
   );
   const handleSurrender = useCallback((surrenderMessage: GameWantSurrender) => {
     setGameEndData(surrenderMessage.end);
@@ -221,10 +224,22 @@ export function GameManager({
   // handle game end
   useEffect(() => {
     if (!gameEndData) return;
+
     if (gameEndData.win_board) setGameBoard(gameEndData.win_board);
-    setWinData(userSymbol === "X" ? gameEndData.X : gameEndData.O);
-    if (isAnonymus) logoutAnonymus();
-  }, [gameEndData, userSymbol, isAnonymus, logoutAnonymus]);
+    setEndData(userSymbol === "X" ? gameEndData.X : gameEndData.O);
+  }, [gameEndData, userSymbol]);
+
+  const wantRematchRef = useRef(wantRematch);
+
+  useEffect(() => {
+    wantRematchRef.current = wantRematch;
+  }, [wantRematch]);
+
+  useEffect(() => {
+    return () => {
+      if (!wantRematchRef.current) logoutAnonymus();
+    }; // Cleanup when component unmounts
+  }, []);
 
   const handleMessage = useCallback(
     (event: MessageEvent) => {
@@ -261,6 +276,7 @@ export function GameManager({
 
   useEffect(() => {
     if (!uuid) return;
+    if (isConnected) return;
     if (websocketRef.current) websocketRef.current.close();
 
     setIsLoading(true);
@@ -271,11 +287,13 @@ export function GameManager({
     websocketRef.current = websocket;
 
     const handleOpen = () => {
+      console.log("Connected to game server");
       setIsConnected(true);
       setIsLoading(false);
     };
 
     const handleClose = () => {
+      console.log("Disconnected from game server");
       setIsConnected(false);
     };
 
@@ -289,7 +307,7 @@ export function GameManager({
       websocket.removeEventListener("message", handleMessage);
       websocket.close();
     };
-  }, [uuid, isLogged, displayMessage, handleMessage]);
+  }, []);
 
   return (
     <GameManagerContext.Provider
@@ -327,35 +345,56 @@ export function GameManager({
     >
       {children}
       <GameEndModal
-        open={!!winData}
-        title={winData?.result ?? ""}
+        open={!!endData}
+        title={endData?.result ?? ""}
         turn={userSymbol ?? "X"}
-        description={winData?.message ?? ""}
+        description={endData?.message ?? ""}
         rematchAction={() => {
-          setWinData(null);
+          setEndData(null);
+          setWantRematch(true);
           sendMessage({ rematch: true } as GameRematch);
         }}
-        closeAction={() => setWinData(null)}
+        closeAction={() => setEndData(null)}
       />
       <GameWantModal
-        open={wantRematch}
+        open={openRematchModal}
         title="Odveta"
         description="Můžete si okamžitě zahrát odvetu, s odvetou musí souhlasit oba hráči. Chcete proti hráči znovu soupeřit?"
         acceptAction={() => {
-          setWantRematch(false);
+          setOpenRematchModal(false);
+          setWantRematch(true);
           sendMessage({ rematch: true } as GameRematch);
         }}
-        cancelAction={() => setWantRematch(false)}
+        cancelAction={() => {
+          setOpenRematchModal(false);
+          setEndData(null);
+          sendMessage({ rematch: false } as GameRematch);
+        }}
+      />
+      <GameInfoModal
+        open={rejectRematch}
+        title="Zamítnutí odvety"
+        description="Váš soupeř odmítl vaši nabídku odvety."
+        closeAction={() => setRejectRematch(false)}
       />
       <GameWantModal
-        open={wantDraw}
+        open={openDrawModal}
         title="Nabídka remízy"
         description="Váš soupeř nabízí ukončit hru remízou. Chcete hru předčasně ukončit remízou?"
         acceptAction={() => {
-          setWantDraw(false);
+          setOpenDrawModal(false);
           sendMessage({ draw: true } as GameDraw);
         }}
-        cancelAction={() => setWantDraw(false)}
+        cancelAction={() => {
+          setOpenDrawModal(false);
+          sendMessage({ draw: false } as GameDraw);
+        }}
+      />
+      <GameInfoModal
+        open={rejectDraw}
+        title="Zamítnutí remízy"
+        description="Váš soupeř odmítl vaši nabídku remízy."
+        closeAction={() => setRejectDraw(false)}
       />
     </GameManagerContext.Provider>
   );

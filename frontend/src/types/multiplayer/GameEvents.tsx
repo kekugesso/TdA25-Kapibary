@@ -29,11 +29,13 @@ export type GameWantSurrender = {
 };
 
 export type GameWantRematch = {
+  rematch: boolean; //true if draw is accepted
   rematch_to?: string; //uuid player or anonymus token or null
   new_game?: string; //uuid game or null
 };
 
 export type GameWantDraw = {
+  draw: boolean; //true if draw is accepted
   draw_to?: string; //uuid player or anonymus token or null
   end: GameEnd | null;
 };
@@ -42,7 +44,7 @@ export type GetGameMove = {
   row: number;
   column: number;
   symbol: "X" | "O";
-  time?: number; // in sec for user that made the action
+  time?: GameTime; // in sec for user that made the action
   end: GameEnd | null;
 };
 
