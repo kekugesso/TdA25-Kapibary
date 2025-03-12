@@ -376,7 +376,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         for gamestatus in serializer.data:
             hello = {}
             hello["uuid"] = gamestatus["player"]["uuid"]
-            hello["time"] = 10
+            hello["time"] = 480
             players[gamestatus["symbol"]] = hello
         return players
     
