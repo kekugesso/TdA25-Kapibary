@@ -404,6 +404,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                 else:
                     player_symbol = "X"
             elif(opponent_uuid == "anonymous"):
+                player_symbol = GameStatus.objects.get(player=uuid_player, game=game_uuid).symbol
                 if(player_symbol == "X"):
                     opponent_symbol = "O"
                 else:
@@ -679,9 +680,11 @@ class GameConsumer(AsyncWebsocketConsumer):
             game_status1_symbol = GameStatus.objects.filter(player=uuid_user).first().symbol
             user2 = CustomUser.objects.get(uuid=opponent)
             if(game_status1_symbol == "X"):
-                game_status2_symbol = "O"
-            else:
                 game_status2_symbol = "X"
+                game_status1_symbol = "O"
+            else:
+                game_status1_symbol = "X"
+                game_status2_symbol = "O"
             gamestatus_data1 = {
                 "player": user1.uuid,
                 "result": "unknown",
