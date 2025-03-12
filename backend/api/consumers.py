@@ -86,10 +86,11 @@ class GameConsumer(AsyncWebsocketConsumer):
                         data["draw_to"] = opponent_uuid
                         game_data["draw_to"] = opponent_uuid
                     else:
-                        if((game_data["draw_to"] == "anonymous" and uuid_player == self.data[uuid]["anonymous"]) or uuid_player == game_data["draw_to"]):
-                            game_data["end"] = await self.get_end_dict(uuid_player, "draw", "agreed", uuid, game_data["friendly"])
-                            opponent_uuid = await self.get_opponent(uuid_player, uuid)
-                            await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "draw", game_data["friendly"])
+                        if(data["draw"]):
+                            if((game_data["draw_to"] == "anonymous" and uuid_player == self.data[uuid]["anonymous"]) or uuid_player == game_data["draw_to"]):
+                                game_data["end"] = await self.get_end_dict(uuid_player, "draw", "agreed", uuid, game_data["friendly"])
+                                opponent_uuid = await self.get_opponent(uuid_player, uuid)
+                                await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "draw", game_data["friendly"])
                         else:
                             game_data["draw_to"] = ""
                             data["draw"] = False
