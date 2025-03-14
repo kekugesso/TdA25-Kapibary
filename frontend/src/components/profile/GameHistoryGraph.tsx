@@ -49,12 +49,16 @@ export default function GameHistoryGraph({
   return (
     <svg
       key="graph"
-      width="auto"
+      width="100%"
       height={`${svgHeight}px`}
       viewBox={`0 0 ${svgWidth} ${svgHeight}`}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      overflow="visible"
     >
+      <text x="-3" y="-10" fill={strokeColor} className="text-xl">
+        Elo
+      </text>
       <path
         d="M980 296L990 290L980 284"
         stroke={strokeColor}
@@ -70,6 +74,9 @@ export default function GameHistoryGraph({
         strokeWidth="2"
       />
 
+      <text x="1000" y="297" fill={strokeColor} className="text-xl">
+        Čas
+      </text>
       <path d="M4 15L10 2L16 15" strokeWidth="2" stroke={strokeColor} />
       <line
         x1="10"

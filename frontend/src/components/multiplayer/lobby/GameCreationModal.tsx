@@ -33,7 +33,7 @@ export default function GameCreationModal({
           onClick={() => createAction(symbol)}
           className="bg-blue-light dark:bg-blue-dark text-white font-bold text-lg py-3 px-6 rounded-lg shadow-black-light shadow-sm transform transition-all duration-300 ease-in-out hover:scale-105"
         >
-          Create
+          Vytvořit
         </button>
         <button
           onClick={cancelAction}

@@ -68,7 +68,7 @@ export const RegisterMutation = ({
 
       if (res.status === 400) throw (await res.json()) as RegistrtionError;
 
-      if (res.status != 200) {
+      if (res.status != 201) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Register failed");
       }
