@@ -35,25 +35,23 @@ export interface AuthContextType {
   check: () => Promise<boolean>;
   logout: () => Promise<void | Error>;
   loading: boolean;
-
-  isAnonymus: boolean;
-  loginAnonymus: (token: string) => void | Error;
-  logoutAnonymus: () => void | Error;
+  getToken: () => string | undefined;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isAnonymus, setIsAnonymus] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const router = useRouter();
   const path = usePathname();
 
   const loginSucess = async (data: LoginResponse | RegisterResponse) => {
-    if (isAnonymus) setIsAnonymus(false);
+    deleteCookie("anonymous");
     setUser(data.user);
-    setCookie("authToken", data.token);
+    setCookie("authToken", data.token, {
+      expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
+    });
     router.prefetch(
       data.user.is_superuser ? "/admin" : `/profile/${data.user.uuid}`,
     );
@@ -80,21 +78,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     },
     [loginMutation],
   );
-
-  const loginAnonymus = (token: string) => {
-    console.log("Logging in as anonymus");
-    setIsAnonymus(true);
-    setCookie("authToken", token);
-    setCookie("anonymus", "true");
-  };
-  const logoutAnonymus = () => {
-    if (getCookie("anonymus")) {
-      console.log("Logging out as anonymus");
-      setIsAnonymus(false);
-      deleteCookie("authToken");
-      deleteCookie("anonymus");
-    }
-  };
 
   const registerMutation = RegisterMutation({
     onSuccessAction: loginSucess,
@@ -125,7 +108,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await fetch("/api/check", {
         method: "GET",
         headers: {
-          Authorization: `Token ${getCookie("authToken")}`,
+          Authorization: `Token ${getToken()}`,
         },
       }).then(async (res) => {
         if (res.status == 200) return (await res.json()) as User;
@@ -155,7 +138,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async (): Promise<void | Error> => {
     try {
-      const token: string | undefined = getCookie("authToken");
+      const token: string | undefined = getToken();
       if (!token) throw Error("You are not logged in");
       await logoutMutation.mutateAsync(token);
     } catch (error) {
@@ -179,28 +162,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else setLoading(false);
     };
 
-    if (getCookie("anonymus")) {
-      setIsAnonymus(true);
-      setLoading(false);
-    } else if (!isAnonymus) initializeAuth();
-  }, [
-    isAnonymus,
-    check,
-    checkQuery,
-    user,
-    checkQuery.data,
-    router,
-    loading,
-    path,
-  ]);
+    if (getCookie("anonymous")) setLoading(false);
+    else initializeAuth();
+  }, [check, checkQuery, user, checkQuery.data, router, loading, path]);
 
   useEffect(() => {
     if (loading) return;
     if (checkQuery.isError) return;
     if (!getCookie("authToken")) return;
-    if (isAnonymus) return;
+    if (getCookie("anonymous")) return;
     checkQuery.refetch();
-  }, [path, loading]);
+  }, [path, loading, checkQuery]);
+
+  const getToken = () => {
+    if (getCookie("anonymous")) {
+      deleteCookie("anonymous");
+      deleteCookie("authToken");
+    }
+    return getCookie("authToken");
+  };
 
   return (
     <AuthContext.Provider
@@ -217,9 +197,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           registerMutation.isPending ||
           logoutMutation.isPending,
         isLogged: !!user,
-        isAnonymus,
-        loginAnonymus,
-        logoutAnonymus,
+        getToken,
       }}
     >
       {children}

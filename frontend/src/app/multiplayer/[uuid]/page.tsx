@@ -8,6 +8,7 @@ import GameScreen from "@/components/multiplayer/game/GameScreen";
 import UserInfo from "@/components/multiplayer/game/UserInfo";
 import DissableFooter from "@/components/core/DissableFooter";
 import MobileUserInfo from "@/components/multiplayer/game/MobileUserInfo";
+import { getCookie } from "cookies-next/client";
 
 export default function MultiplayerGame({
   params,
@@ -28,7 +29,7 @@ export default function MultiplayerGame({
     loadGameCode();
   }, [params]);
 
-  return !uuid ? (
+  return !uuid || getCookie("openGame") ? (
     <Loading />
   ) : (
     <GameManager uuid={uuid}>

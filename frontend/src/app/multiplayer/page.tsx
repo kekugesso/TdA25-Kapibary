@@ -1,13 +1,14 @@
 "use client";
 import { useAuth } from "@/components/core/AuthProvider";
 import { useErrorModal } from "@/components/core/ErrorModalProvider";
+import GameContinueModal from "@/components/multiplayer/game/GameContinueModal";
 import GameCreationModal from "@/components/multiplayer/lobby/GameCreationModal";
 import GameFindModal from "@/components/multiplayer/lobby/GameFindModal";
 import GameInviteModal from "@/components/multiplayer/lobby/GameInviteModal";
 import GameJoinModal from "@/components/multiplayer/lobby/GameJoinModal";
 import GameTypeCard from "@/components/multiplayer/lobby/GameTypeCard";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { getCookie } from "cookies-next/client";
+import { setCookie } from "cookies-next/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -31,7 +32,7 @@ export default function MultiplayerLobby({
 
   const [gameCode, setGameCode] = useState<number | undefined>(undefined);
   const router = useRouter();
-  const { loginAnonymus, isLogged } = useAuth();
+  const { isLogged, getToken } = useAuth();
   const { displayMessage, displayError } = useErrorModal();
   const [findingGame, setFindingGame] = useState(false);
   const [joinGameModal, setJoinGameModal] = useState(false);
@@ -44,7 +45,7 @@ export default function MultiplayerLobby({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Token ${getCookie("authToken")}`,
+          Authorization: `Token ${getToken()}`,
         },
         body: JSON.stringify({ symbol: symbol } as { symbol: "X" | "O" }),
       });
@@ -84,8 +85,8 @@ export default function MultiplayerLobby({
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          ...(getCookie("authToken") && {
-            Authorization: `Token ${getCookie("authToken")}`,
+          ...(getToken() && {
+            Authorization: `Token ${getToken()}`,
           }),
         },
         body: JSON.stringify({ code } as { code: number }),
@@ -118,7 +119,10 @@ export default function MultiplayerLobby({
         });
       },
       onSuccess: (data) => {
-        if (!isLogged && data.authtoken) loginAnonymus(data.authtoken);
+        if (!isLogged && data.authtoken)
+          setCookie("anonymous", data.authtoken, {
+            expires: new Date(Date.now() + 1000 * 60), // you get 1 minute to connect to the game
+          });
         localStorage.setItem("multiplayerGame", data.uuid);
         router.push(`/multiplayer/${data.uuid}`);
       },
@@ -130,7 +134,7 @@ export default function MultiplayerLobby({
       const res = await fetch("/api/query", {
         method: "POST",
         headers: {
-          Authorization: `Token ${getCookie("authToken")}`,
+          Authorization: `Token ${getToken()}`,
         },
       });
       if (res.status === 400) return res;
@@ -147,7 +151,7 @@ export default function MultiplayerLobby({
       const res = await fetch("/api/query", {
         method: "DELETE",
         headers: {
-          Authorization: `Token ${getCookie("authToken")}`,
+          Authorization: `Token ${getToken()}`,
         },
       });
       if (res.status > 250) throw new Error((await res.json()).message);
@@ -176,7 +180,7 @@ export default function MultiplayerLobby({
     queryFn: async () => {
       const res = await fetch("api/rating", {
         headers: {
-          Authorization: `Token ${getCookie("authToken")}`,
+          Authorization: `Token ${getToken()}`,
         },
       });
       console.log(res);
@@ -193,6 +197,37 @@ export default function MultiplayerLobby({
     return () => clearInterval(timer);
   }, [findingGame, router, getGameQuery]);
 
+  const [existingGame, setExistingGame] = useState(false);
+  useEffect(() => {
+    const uuid = localStorage.getItem("multiplayerGame");
+    if (!uuid) return;
+    setExistingGame(true);
+  }, []);
+
+  const clearExistingGame = () => {
+    // we need to connect to the game, send surrender and then disconnect
+    // and remove the game from local storage
+    const uuid = localStorage.getItem("multiplayerGame");
+    if (!uuid) {
+      localStorage.removeItem("multiplayerGame");
+      setExistingGame(false);
+      return;
+    }
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const websocket = new WebSocket(
+      `${protocol}://${window.location.hostname}:2568/ws/game/${uuid}`,
+    );
+    websocket.onopen = () => {
+      websocket.send(JSON.stringify({ surrender: true }));
+      websocket.close();
+      localStorage.removeItem("multiplayerGame");
+      setExistingGame(false);
+    };
+    websocket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      websocket.close();
+    };
+  };
   return (
     <article className="flex flex-center flex-col space-y-5 py-[5%] ">
       <h1 className="font-bold text-3xl">
@@ -252,6 +287,15 @@ export default function MultiplayerLobby({
               `/multiplayer/${localStorage.getItem("multiplayerGame")}`,
             )
           }
+        />
+        <GameContinueModal
+          open={existingGame}
+          joinAction={() =>
+            router.push(
+              `/multiplayer/${localStorage.getItem("multiplayerGame")}`,
+            )
+          }
+          cancelAction={clearExistingGame}
         />
       </div>
     </article>

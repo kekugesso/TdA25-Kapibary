@@ -102,7 +102,7 @@ export const ErrorModalProvider = ({ children }: { children: ReactNode }) => {
           <ModalFooter>
             <button
               onClick={handleClose}
-              className="bg-blue-light dark:bg-blue-dark text-white dark:text-black font-semibold rounded-lg py-2 px-6"
+              className="bg-blue-light dark:bg-blue-dark font-semibold rounded-lg py-2 px-6"
             >
               {options?.overrideButtonMessage || "Go back"}
             </button>

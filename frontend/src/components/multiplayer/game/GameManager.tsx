@@ -24,7 +24,6 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from "react";
 import { MessageType } from "@/types/multiplayer/MessageType";
@@ -32,6 +31,9 @@ import GameWantModal from "./GameWantModal";
 import { GameResult } from "@/types/multiplayer/GameResult";
 import { useRouter } from "next/navigation";
 import GameInfoModal from "./GameInfoModal";
+import useGameConnection from "./GameConnection";
+import { setCookie } from "cookies-next";
+import GameDisconnectionModal from "./GameDisconnectModal";
 
 export interface GameManagerContextProps {
   isLoading: boolean;
@@ -64,13 +66,11 @@ export function GameManager({
   uuid: string;
   children: React.ReactNode;
 }) {
-  const { user, isLogged, loading: authLoading, logoutAnonymus } = useAuth();
+  const { user, isLogged, loading: isAuthLoading } = useAuth();
   const { displayMessage } = useErrorModal();
   const router = useRouter();
 
-  const websocketRef = useRef<WebSocket | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isConnected, setIsConnected] = useState(false);
 
   const [userSymbol, setUserSymbol] = useState<"X" | "O" | null>(null);
   const [data, setData] = useState<MultiplayerGame | null>(null);
@@ -78,6 +78,7 @@ export function GameManager({
   const [gameEndData, setGameEndData] = useState<GameEnd | null>(null);
   const [endData, setEndData] = useState<SymbolMessage | null>(null);
   const [turn, setTurn] = useState<"X" | "O" | null>(null);
+  const [gameEnded, setGameEnded] = useState(false);
 
   const [userTime, setUserTime] = useState<number | null>(null);
   const [opponentTime, setOpponentTime] = useState<number | null>(null);
@@ -89,51 +90,6 @@ export function GameManager({
   const [wantDraw, setWantDraw] = useState(false);
   const [openDrawModal, setOpenDrawModal] = useState(false);
   const [rejectDraw, setRejectDraw] = useState(false);
-
-  const sendMessage = useCallback(
-    (message: object) => {
-      if (websocketRef.current?.readyState === WebSocket.OPEN) {
-        websocketRef.current.send(JSON.stringify(message));
-      } else displayMessage("Failed to contact server!");
-    },
-    [displayMessage],
-  );
-
-  useEffect(() => {
-    if (
-      userTime === null ||
-      opponentTime === null ||
-      data?.game_status[0].result !== GameResult.UNKNOWN
-    )
-      return;
-
-    const interval = setInterval(() => {
-      if (!gameEndData && (userTime <= 0 || opponentTime <= 0)) {
-        sendMessage({ time: true } as GameTimeLimit);
-        clearInterval(interval);
-        return;
-      }
-      if (gameEndData) {
-        clearInterval(interval);
-        return;
-      }
-      // @ts-expect-error - TS doesn't know that time is not null
-      if (userTime && turn === userSymbol) setUserTime((time) => time - 1);
-      if (opponentTime && turn !== userSymbol)
-        // @ts-expect-error - TS doesn't know that time is not null
-        setOpponentTime((time) => time - 1);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [
-    gameEndData,
-    userTime,
-    opponentTime,
-    turn,
-    userSymbol,
-    sendMessage,
-    data,
-  ]);
 
   const setTimeData = useCallback(
     (timeData: GameTime) => {
@@ -147,23 +103,28 @@ export function GameManager({
     (data: MultiplayerGame) => {
       setData(data);
       setGameBoard(data.board);
-      const symbol =
-        data.game_status.find(
-          (status) =>
-            status.player.uuid ===
-            (isLogged ? user?.uuid : getCookie("authToken")),
-        )?.symbol ?? null;
-      setUserSymbol(symbol);
+
+      const userData = data.game_status.find(
+        (status) => status.player.uuid === user?.uuid,
+      );
+      setGameEnded(data.game_status[0].result !== GameResult.UNKNOWN);
+      setUserSymbol(
+        userData !== undefined
+          ? userData.symbol
+          : data.game_status[0].symbol === "X"
+            ? "O"
+            : "X",
+      );
       setTurn(() =>
-        data.board.flat().filter((x) => x === "X").length >
-        data.board.flat().filter((o) => o === "O").length
+        data.board.flat().filter((x) => x === "X" || x === "Xw").length >
+        data.board.flat().filter((o) => o === "O" || o === "Ow").length
           ? "O"
           : "X",
       );
       if (data.time) setTimeData(data.time);
       setIsLoading(false);
     },
-    [isLogged, user, setTimeData],
+    [user, setTimeData],
   );
 
   const handleMove = useCallback(
@@ -225,21 +186,10 @@ export function GameManager({
   useEffect(() => {
     if (!gameEndData) return;
 
+    localStorage.removeItem("multiplayerGame");
     if (gameEndData.win_board) setGameBoard(gameEndData.win_board);
     setEndData(userSymbol === "X" ? gameEndData.X : gameEndData.O);
   }, [gameEndData, userSymbol]);
-
-  const wantRematchRef = useRef(wantRematch);
-
-  useEffect(() => {
-    wantRematchRef.current = wantRematch;
-  }, [wantRematch]);
-
-  useEffect(() => {
-    return () => {
-      if (!wantRematchRef.current) logoutAnonymus();
-    }; // Cleanup when component unmounts
-  }, []);
 
   const handleMessage = useCallback(
     (event: MessageEvent) => {
@@ -274,45 +224,88 @@ export function GameManager({
     ],
   );
 
+  const {
+    createConnection,
+    reconnectAttempts,
+    sendMessage,
+    isConnected,
+    isLoading: isConnectionLoading,
+  } = useGameConnection({
+    uuid,
+    handleMessage,
+  });
+
   useEffect(() => {
-    if (!uuid) return;
-    if (isConnected) return;
-    if (websocketRef.current) websocketRef.current.close();
+    if (!getCookie("anonymous")) return;
 
-    setIsLoading(true);
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const websocket = new WebSocket(
-      `${protocol}://${window.location.hostname}:2568/ws/game/${uuid}`,
-    );
-    websocketRef.current = websocket;
-
-    const handleOpen = () => {
-      console.log("Connected to game server");
-      setIsConnected(true);
-      setIsLoading(false);
+    const cycleTimeMs = 1000 * 60 * 5; // 5 minutes
+    const setCookies = () => {
+      setCookie("authToken", getCookie("anonymous"), {
+        expires: new Date(Date.now() + cycleTimeMs),
+      });
+      setCookie("anonymous", getCookie("anonymous"), {
+        expires: new Date(Date.now() + cycleTimeMs),
+      });
     };
-
-    const handleClose = () => {
-      console.log("Disconnected from game server");
-      setIsConnected(false);
-    };
-
-    websocket.onopen = handleOpen;
-    websocket.onclose = handleClose;
-    websocket.onmessage = handleMessage;
-
-    return () => {
-      websocket.removeEventListener("open", handleOpen);
-      websocket.removeEventListener("close", handleClose);
-      websocket.removeEventListener("message", handleMessage);
-      websocket.close();
-    };
+    setCookies();
+    const anonymousLifeCycle = setInterval(
+      () => {
+        if (getCookie("anonymous")) setCookies();
+        else clearInterval(anonymousLifeCycle);
+      },
+      cycleTimeMs - 1000 * 30,
+    ); // 30 seconds before expiration
+    return () => clearInterval(anonymousLifeCycle);
   }, []);
+
+  // create first connection
+  useEffect(() => {
+    if (isAuthLoading) return;
+    // here can be a race condition with the anonymous lifecycle, but it's not a problem
+    // so we can ignore it for now
+    createConnection();
+  }, [isAuthLoading, createConnection]);
+
+  useEffect(() => {
+    if (
+      userTime === null ||
+      opponentTime === null ||
+      data?.game_status[0].result !== GameResult.UNKNOWN
+    )
+      return;
+
+    const interval = setInterval(() => {
+      if (!gameEndData && (userTime <= 0 || opponentTime <= 0)) {
+        sendMessage({ time: true } as GameTimeLimit);
+        clearInterval(interval);
+        return;
+      }
+      if (gameEndData) {
+        clearInterval(interval);
+        return;
+      }
+      // @ts-expect-error - TS doesn't know that time is not null
+      if (userTime && turn === userSymbol) setUserTime((time) => time - 1);
+      if (opponentTime && turn !== userSymbol)
+        // @ts-expect-error - TS doesn't know that time is not null
+        setOpponentTime((time) => time - 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [
+    gameEndData,
+    userTime,
+    opponentTime,
+    turn,
+    userSymbol,
+    sendMessage,
+    data,
+  ]);
 
   return (
     <GameManagerContext.Provider
       value={{
-        isLoading: isLoading || authLoading,
+        isLoading: isLoading || isConnectionLoading || isAuthLoading,
         isConnected,
 
         data,
@@ -395,6 +388,17 @@ export function GameManager({
         title="Zamítnutí remízy"
         description="Váš soupeř odmítl vaši nabídku remízy."
         closeAction={() => setRejectDraw(false)}
+      />
+      <GameDisconnectionModal
+        open={!isConnected && !isLoading}
+        tries={reconnectAttempts}
+        retryAction={createConnection}
+      />
+      <GameInfoModal
+        open={gameEnded}
+        title="Konec hry"
+        description="Vypadá to, že hra už skončila."
+        closeAction={() => setGameEnded(false)}
       />
     </GameManagerContext.Provider>
   );

@@ -28,7 +28,7 @@ export function Modal({
     open && (
       <dialog
         ref={dialogRef}
-        className="flex w-[100vw] h-[100dvh] inset-0 bg-transparent z-40 flex-center"
+        className="fixed flex w-[100vw] h-[100dvh] inset-0 bg-transparent z-40 flex-center"
         open={open}
         onClick={handleBackdropClick}
       >
