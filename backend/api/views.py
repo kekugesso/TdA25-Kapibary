@@ -533,6 +533,8 @@ class FreeplayGameView(APIView):
             game.save()
         if(request.user.is_authenticated == True and game.anonymousToken is None):
             gamestatus = GameStatus.objects.filter(game=game.uuid).first()
+            if(gamestatus.player.uuid == request.user.uuid):
+                return Response({"message": "Nemůžeš hrát proti sobě."}, status=400)
             game_status_data = {
                 "player": request.user.uuid,
                 "result": "unknown",
