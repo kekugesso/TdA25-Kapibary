@@ -404,7 +404,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                 else:
                     player_symbol = "X"
             elif(opponent_uuid == "anonymous"):
-                player_symbol = GameStatus.objects.get(player=uuid_player, game=game_uuid).symbol
+                player_symbol = await self.get_symbol(game_uuid, uuid_player)
                 if(player_symbol == "X"):
                     opponent_symbol = "O"
                 else:
