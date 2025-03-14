@@ -531,7 +531,7 @@ class FreeplayGameView(APIView):
             authtoken = ''.join(random.choices(characters, k=40))
             game.anonymousToken = authtoken
             game.save()
-        if(request.user.is_authenticated == True):
+        if(request.user.is_authenticated == True and game.anonymousToken is None):
             gamestatus = GameStatus.objects.filter(game=game.uuid).first()
             game_status_data = {
                 "player": request.user.uuid,
@@ -552,7 +552,7 @@ class FreeplayGameView(APIView):
         result = serializer.data
         result["authtoken"] = game.anonymousToken
         return Response(result, status=200)
-        
+
     def post(self, request):
         game_status = GameStatus.objects.filter(player=request.user.uuid, result="unknown").first()
         if(game_status is not None):
