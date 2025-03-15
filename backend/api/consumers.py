@@ -17,46 +17,58 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         uuid = self.scope["url_route"]["kwargs"]["uuid"]
-        if(uuid not in self.data):
-            self.data[uuid] = {"tah": "X", "anonymous": "", "count_users": 1, "end": None, "draw_to": "", "rematch_to": "", "friendly": False}
+        if (uuid not in self.data):
+            self.data[uuid] = {"tah": "X", "anonymous": "", "count_users": 1,
+                               "end": None, "draw_to": "", "rematch_to": "", "friendly": False}
             friendly = await self.is_friendly(uuid)
-            if(friendly):
+            if (friendly):
                 self.data[uuid]["friendly"] = True
             else:
                 self.data[uuid]["friendly"] = False
                 self.data[uuid]["timer"] = await self.get_users_game_for_timer(uuid)
-        if(uuid in self.data):
+        if (uuid in self.data):
             self.data[uuid]["count_users"] += 1
-            if(self.data[uuid]["count_users"] == 2 and not self.data[uuid]["friendly"]):
+            if (self.data[uuid]["count_users"] == 2 and not self.data[uuid]["friendly"]):
                 self.data[uuid]["start_time"] = time.time()
-            if(self.data[uuid]["friendly"]):
+            if (self.data[uuid]["friendly"]):
                 token = await self.get_user_from_token()
                 control_token = await self.is_valid_token(token)
                 if not control_token:
                     self.data[uuid]["anonymous"] = token
         await self.channel_layer.group_add(f"game_{uuid}", self.channel_name)
         await self.accept()
-        game = await self.get_game(uuid)
+        try:
+            game = await self.get_game(uuid)
+        except Game.DoesNotExist:
+            await self.channel_layer.group_send(
+                f"game_{uuid}",
+                {
+                    "type": "game_update",
+                    "message": json.dumps({"type": "error", "message": "Hra neexistuje."})
+                }
+            )
+            return
+
         gamedata = await self.get_game_data(uuid)
-        if(gamedata["game_status"][0]["result"] != "unknown"):
+        if (gamedata["game_status"][0]["result"] != "unknown"):
             self.data[uuid]["end"] = True
         dataconsumer = self.data[uuid]
-        if(dataconsumer.get("timer") is not None and self.data[uuid]["end"] is None):
+        if (dataconsumer.get("timer") is not None and self.data[uuid]["end"] is None):
             gamedata["time"] = await self.get_timer_for_spectator(dataconsumer.get("timer"), dataconsumer.get("start_time"), dataconsumer.get("tah"))
         matrix = [["" for _ in range(15)] for _ in range(15)]
         for symbol in gamedata.get("board", []):
             matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
         gamedata["board"] = matrix
-        if(game.anonymousToken is not None):
+        if (game.anonymousToken is not None):
             self.data[uuid]["anonymous"] = game.anonymousToken
         gamedata["type"] = "initData"
         await self.channel_layer.group_send(
-                f"game_{uuid}",
-                {
-                    "type": "game_update",
-                    "message": json.dumps(gamedata)
-                }
-            )
+            f"game_{uuid}",
+            {
+                "type": "game_update",
+                "message": json.dumps(gamedata)
+            }
+        )
 
     async def disconnect(self, close_code):
         uuid = self.scope["url_route"]["kwargs"]["uuid"]
@@ -69,7 +81,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         game_data = self.data[uuid]
         token = await self.get_user_from_token()
-        if(token is not None):
+        if (token is not None):
             control_token = await self.is_valid_token(token)
             if control_token:
                 uuid_player = await self.get_token(token)
@@ -77,17 +89,17 @@ class GameConsumer(AsyncWebsocketConsumer):
                 uuid_player = game_data["anonymous"]
         else:
             uuid_player = None
-        if("draw" in data):
-            if(await self.control_if_player(uuid, uuid_player)):
-                if(game_data["end"] is None):
+        if ("draw" in data):
+            if (await self.control_if_player(uuid, uuid_player)):
+                if (game_data["end"] is None):
                     data["type"] = "draw"
-                    if(game_data["draw_to"] == ""):
+                    if (game_data["draw_to"] == ""):
                         opponent_uuid = await self.get_opponent(uuid_player, uuid)
                         data["draw_to"] = opponent_uuid
                         game_data["draw_to"] = opponent_uuid
                     else:
-                        if(data["draw"]):
-                            if((game_data["draw_to"] == "anonymous" and uuid_player == self.data[uuid]["anonymous"]) or uuid_player == game_data["draw_to"]):
+                        if (data["draw"]):
+                            if ((game_data["draw_to"] == "anonymous" and uuid_player == self.data[uuid]["anonymous"]) or uuid_player == game_data["draw_to"]):
                                 game_data["end"] = await self.get_end_dict(uuid_player, "draw", "agreed", uuid, game_data["friendly"])
                                 opponent_uuid = await self.get_opponent(uuid_player, uuid)
                                 await self.write_result_to_db(uuid, opponent_uuid, uuid_player, "draw", game_data["friendly"])
@@ -98,12 +110,12 @@ class GameConsumer(AsyncWebsocketConsumer):
                     send = False
             else:
                 send = False
-        elif(data.get("time") == True):
-            if(await self.control_if_player(uuid, uuid_player)):
+        elif (data.get("time") == True):
+            if (await self.control_if_player(uuid, uuid_player)):
                 data["type"] = "time"
                 spend_time = int(time.time() - game_data["start_time"])
                 game_data["timer"][game_data["tah"]]["time"] -= spend_time
-                if(game_data["timer"][game_data["tah"]]["time"] <= 0):
+                if (game_data["timer"][game_data["tah"]]["time"] <= 0):
                     control_time = True
                     game_data["end"] = await self.get_end_dict(uuid_player, "lose", "timeout", uuid, game_data["friendly"])
                     opponent_uuid = await self.get_opponent(uuid_player, uuid)
@@ -112,9 +124,9 @@ class GameConsumer(AsyncWebsocketConsumer):
                 else:
                     game_data["start_time"] = time.time()
                     data["time"] = await self.get_timer_for_spectator(game_data.get("timer"), game_data.get("start_time"), game_data.get("tah"))
-        elif(data.get("surrender") == True):
-            if(await self.control_if_player(uuid, uuid_player)):
-                if(game_data["end"] is None):
+        elif (data.get("surrender") == True):
+            if (await self.control_if_player(uuid, uuid_player)):
+                if (game_data["end"] is None):
                     data["type"] = "surrender"
                     game_data["end"] = await self.get_end_dict(uuid_player, "lose", "surrender", uuid, game_data["friendly"])
                     opponent_uuid = await self.get_opponent(uuid_player, uuid)
@@ -123,19 +135,19 @@ class GameConsumer(AsyncWebsocketConsumer):
                     send = False
             else:
                 send = False
-        elif("rematch" in data):
-            if(await self.control_if_player(uuid, uuid_player)):
-                if(game_data["end"] is not None):
+        elif ("rematch" in data):
+            if (await self.control_if_player(uuid, uuid_player)):
+                if (game_data["end"] is not None):
                     data["type"] = "rematch"
-                    if(game_data["rematch_to"] == ""):
+                    if (game_data["rematch_to"] == ""):
                         opponent_uuid = await self.get_opponent(uuid_player, uuid)
                         data["rematch_to"] = opponent_uuid
                         game_data["rematch_to"] = opponent_uuid
                     else:
-                        if(data.get("rematch") == False):
+                        if (data.get("rematch") == False):
                             game_data["rematch_to"] = ""
                         else:
-                            if((game_data["rematch_to"] == "anonymous" and uuid_player == self.data[uuid]["anonymous"]) or uuid_player == game_data["rematch_to"]):
+                            if ((game_data["rematch_to"] == "anonymous" and uuid_player == self.data[uuid]["anonymous"]) or uuid_player == game_data["rematch_to"]):
                                 data["new_game"] = await sync_to_async(self.create_new_game)(uuid_player, uuid, game_data["friendly"], game_data["anonymous"])
                 else:
                     send = False
@@ -144,12 +156,13 @@ class GameConsumer(AsyncWebsocketConsumer):
         else:
             control = await self.control_player(uuid, uuid_player, game_data["tah"])
             if control:
-                if(data.get("row") is not None and data.get("column") is not None and not await sync_to_async(self.if_cell_exist)(uuid, data["row"], data["column"]) and game_data["end"] is None):
+                if (data.get("row") is not None and data.get("column") is not None and not await sync_to_async(self.if_cell_exist)(uuid, data["row"], data["column"]) and game_data["end"] is None):
                     data["type"] = "new_symbol"
                     if not game_data["friendly"]:
                         spend_time = int(time.time() - game_data["start_time"])
-                        game_data["timer"][game_data["tah"]]["time"] -= spend_time
-                        if(game_data["timer"][game_data["tah"]]["time"] <= 0):
+                        game_data["timer"][game_data["tah"]
+                                           ]["time"] -= spend_time
+                        if (game_data["timer"][game_data["tah"]]["time"] <= 0):
                             control_time = True
                             game_data["end"] = await self.get_end_dict(uuid_player, "lose", "timeout", uuid, game_data["friendly"])
                             opponent_uuid = await self.get_opponent(uuid_player, uuid)
@@ -157,9 +170,9 @@ class GameConsumer(AsyncWebsocketConsumer):
                         else:
                             game_data["start_time"] = time.time()
                             data["time"] = await self.get_timer_for_spectator(game_data.get("timer"), game_data.get("start_time"), game_data.get("tah"))
-                    if(control_time == False):
+                    if (control_time == False):
                         data["symbol"] = game_data["tah"]
-                        if(game_data["end"] is None):
+                        if (game_data["end"] is None):
                             await self.save_board(data, uuid)
                             board = await self.get_list_board(uuid)
                         win_probality = await self.get_winning_board(board, 5, game_data["tah"])
@@ -182,7 +195,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                     send = False
             else:
                 send = False
-        if(send):
+        if (send):
             data["end"] = game_data["end"]
             await self.channel_layer.group_send(
                 f"game_{uuid}",
@@ -193,7 +206,6 @@ class GameConsumer(AsyncWebsocketConsumer):
             )
         else:
             pass
-
 
     @sync_to_async
     def save_board(self, data, uuid):
@@ -217,45 +229,48 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     @sync_to_async
     def get_symbol(self, uuid_game, uuid_user):
-        gamestatus = GameStatus.objects.filter(game=uuid_game, player=uuid_user).first()
+        gamestatus = GameStatus.objects.filter(
+            game=uuid_game, player=uuid_user).first()
         return gamestatus.symbol
 
     @sync_to_async
     def control_player(self, uuid_game, uuid_user, tah):
-        if(self.data[uuid_game]["end"] is not None):
+        if (self.data[uuid_game]["end"] is not None):
             return False
         gamestatus = GameStatus.objects.filter(game=uuid_game)
         serializer = GameStatusSerializerView(gamestatus, many=True)
         players = []
         for gamestatus in serializer.data:
             players.append(gamestatus["player"]["uuid"])
-        if(len(players) < 2):
-            if(uuid_user not in players):
-                if(uuid_user == self.data[uuid_game]["anonymous"]):
-                    gamestatus = GameStatus.objects.filter(player=players[0], result="unknown").first()
-                    if(tah != gamestatus.symbol):
+        if (len(players) < 2):
+            if (uuid_user not in players):
+                if (uuid_user == self.data[uuid_game]["anonymous"]):
+                    gamestatus = GameStatus.objects.filter(
+                        player=players[0], result="unknown").first()
+                    if (tah != gamestatus.symbol):
                         return True
             else:
-                gamestatus = GameStatus.objects.filter(player=uuid_user, result="unknown").first()
-                if(gamestatus is None):
+                gamestatus = GameStatus.objects.filter(
+                    player=uuid_user, result="unknown").first()
+                if (gamestatus is None):
                     return False
-                if(tah == gamestatus.symbol):
+                if (tah == gamestatus.symbol):
                     return True
         else:
-            if(uuid_user in players):
-                gamestatususer = GameStatus.objects.filter(player=uuid_user, result="unknown").first()
+            if (uuid_user in players):
+                gamestatususer = GameStatus.objects.filter(
+                    player=uuid_user, result="unknown").first()
                 return gamestatususer.symbol == tah
         return False
 
     async def get_user_from_token(self):
         headers = dict(deepcopy(self.scope["headers"]))
-        cookies = {cookie.split("=")[0]: cookie.split("=")[1] 
+        cookies = {cookie.split("=")[0]: cookie.split("=")[1]
                    for cookie in headers.get(b"cookie", b"").decode().split("; ") if "=" in cookie}
 
         auth_token = cookies.get("authToken", None)
 
         return auth_token
-
 
     @sync_to_async
     def get_token(self, token_key):
@@ -275,7 +290,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         if it does it adds 'w' at the end of the position and returns the board
         else return null
         """
-        
+
         # functions to handle wins
         def horizontal_win(r: int, c: int) -> List[List[str]]:
             for k in range(winning):
@@ -356,11 +371,12 @@ class GameConsumer(AsyncWebsocketConsumer):
             matrix[symbol["row"]][symbol["column"]] = symbol["symbol"]
         data = matrix
         return data
+
     @sync_to_async
     def is_friendly(self, game_uuid):
         game_type = Game.objects.get(uuid=game_uuid).gameType
         return game_type == "friendly"
-    
+
     @sync_to_async
     def is_valid_token(self, token):
         try:
@@ -368,7 +384,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             return True
         except Token.DoesNotExist:
             return False
-    
+
     @sync_to_async
     def get_users_game_for_timer(self, uuid_game):
         gamestatus = GameStatus.objects.filter(game=uuid_game)
@@ -380,14 +396,16 @@ class GameConsumer(AsyncWebsocketConsumer):
             hello["time"] = 480
             players[gamestatus["symbol"]] = hello
         return players
-    
+
     async def get_timer_for_spectator(self, timer, start_time, tah):
         result = {"X": {}, "O": {}}
-        if(tah == "X"):
-            result["X"]["time"] = timer["X"]["time"] - int((time.time() - start_time))
+        if (tah == "X"):
+            result["X"]["time"] = timer["X"]["time"] - \
+                int((time.time() - start_time))
             result["O"]["time"] = timer["O"]["time"]
         else:
-            result["O"]["time"] = timer["O"]["time"] - int((time.time() - start_time))
+            result["O"]["time"] = timer["O"]["time"] - \
+                int((time.time() - start_time))
             result["X"]["time"] = timer["X"]["time"]
         return result
 
@@ -396,16 +414,16 @@ class GameConsumer(AsyncWebsocketConsumer):
         opponent_uuid = await self.get_opponent(uuid_player, game_uuid)
         player_symbol = ""
         opponent_symbol = ""
-        if(friendly):
-            if(uuid_player == self.data[game_uuid]["anonymous"]):
+        if (friendly):
+            if (uuid_player == self.data[game_uuid]["anonymous"]):
                 opponent_symbol = await self.get_symbol(game_uuid, opponent_uuid)
-                if(opponent_symbol == "X"):
+                if (opponent_symbol == "X"):
                     player_symbol = "O"
                 else:
                     player_symbol = "X"
-            elif(opponent_uuid == "anonymous"):
+            elif (opponent_uuid == "anonymous"):
                 player_symbol = await self.get_symbol(game_uuid, uuid_player)
-                if(player_symbol == "X"):
+                if (player_symbol == "X"):
                     opponent_symbol = "O"
                 else:
                     opponent_symbol = "X"
@@ -417,42 +435,42 @@ class GameConsumer(AsyncWebsocketConsumer):
             player_symbol = await self.get_symbol(game_uuid, uuid_player)
         win_uuid = ""
         lose_uuid = ""
-        if(end == "win"):
+        if (end == "win"):
             win_symbol = player_symbol
             win_uuid = uuid_player
             lose_uuid = opponent_uuid
             lose_symbol = opponent_symbol
-        elif(end == "lose"):
+        elif (end == "lose"):
             win_symbol = opponent_symbol
             win_uuid = opponent_uuid
             lose_uuid = uuid_player
             lose_symbol = player_symbol
-        elif(end == "draw"):
-            if(reason == "deska"):
+        elif (end == "draw"):
+            if (reason == "deska"):
                 resultjson[player_symbol] = {"result": "draw",
-                                        "message": "Hrací plocha byla naplňěná symboly."}
+                                             "message": "Hrací plocha byla naplňěná symboly."}
                 resultjson[opponent_symbol] = {"result": "draw",
-                                        "message": "Hrací plocha byla naplňěná symboly."}
-            elif(reason == "agreed"):
+                                               "message": "Hrací plocha byla naplňěná symboly."}
+            elif (reason == "agreed"):
                 resultjson[player_symbol] = {"result": "draw",
-                                        "message": "Po dohodě hráčů je remiza."}
+                                             "message": "Po dohodě hráčů je remiza."}
                 resultjson[opponent_symbol] = {"result": "draw",
-                                        "message": "Po dohodě hráčů je remiza."}
-        if(reason == "timeout"):
+                                               "message": "Po dohodě hráčů je remiza."}
+        if (reason == "timeout"):
             resultjson[win_symbol] = {"result": "win",
-                                    "message": "U soupeře vypršel čas."}
+                                      "message": "U soupeře vypršel čas."}
             resultjson[lose_symbol] = {"result": "lose",
-                                    "message": "U tebe vypršel čas"}
-        elif(reason == "surrender"):
+                                       "message": "U tebe vypršel čas"}
+        elif (reason == "surrender"):
             resultjson[win_symbol] = {"result": "win",
-                                    "message": "Soupeř se vzdal."}
+                                      "message": "Soupeř se vzdal."}
             resultjson[lose_symbol] = {"result": "lose",
-                                    "message": "Vzdal ses."}
-        elif(reason == "symbol"):
+                                       "message": "Vzdal ses."}
+        elif (reason == "symbol"):
             resultjson[win_symbol] = {"result": "win",
-                                    "message": "Složil jsi 5 symbolů do řady."}
+                                      "message": "Složil jsi 5 symbolů do řady."}
             resultjson[lose_symbol] = {"result": "lose",
-                                    "message": "Soupeř složil 5 symbolů do řady."}
+                                       "message": "Soupeř složil 5 symbolů do řady."}
         self.data[game_uuid]["end"] = resultjson
         return resultjson
 
@@ -469,24 +487,24 @@ class GameConsumer(AsyncWebsocketConsumer):
         result = []
         for game in data:
             hello = {}
-            if(len(game) < 2):
+            if (len(game) < 2):
                 hello["player1"] = game[0]
             else:
                 hello["player1"] = game[0]
                 hello["player2"] = game[1]
             result.append(hello)
         result = result[0]
-        if(result.get("player2") is None):
-            if(uuid_player == self.data[uuid_game]["anonymous"]):
+        if (result.get("player2") is None):
+            if (uuid_player == self.data[uuid_game]["anonymous"]):
                 return result["player1"]["player"]["uuid"]
             else:
                 return "anonymous"
         else:
-            if(uuid_player == result["player1"]["player"]["uuid"]):
+            if (uuid_player == result["player1"]["player"]["uuid"]):
                 return result["player2"]["player"]["uuid"]
             else:
                 return result["player1"]["player"]["uuid"]
-    
+
     def get_opponent_sync(self, uuid_player, uuid_game, friendly):
         game = Game.objects.get(uuid=uuid_game)
         data = GameSerializerMultiplayer(game).data
@@ -499,40 +517,43 @@ class GameConsumer(AsyncWebsocketConsumer):
         result = []
         for game in data:
             hello = {}
-            if(len(game) < 2):
+            if (len(game) < 2):
                 hello["player1"] = game[0]
             else:
                 hello["player1"] = game[0]
                 hello["player2"] = game[1]
             result.append(hello)
         result = result[0]
-        if(result.get("player2") is None):
-            if(uuid_player == self.data[uuid_game]["anonymous"]):
+        if (result.get("player2") is None):
+            if (uuid_player == self.data[uuid_game]["anonymous"]):
                 return result["player1"]["player"]["uuid"]
             else:
                 return "anonymous"
         else:
-            if(uuid_player == result["player1"]["player"]["uuid"]):
+            if (uuid_player == result["player1"]["player"]["uuid"]):
                 return result["player2"]["player"]["uuid"]
             else:
                 return result["player1"]["player"]["uuid"]
-    
+
     @sync_to_async
     def is_draw_board(self, game_uuid):
         game = Game.objects.get(uuid=game_uuid)
         boards = Board.objects.filter(game=game_uuid)
         serializer = BoardSerializer(boards, many=True)
         data = serializer.data
-        if(len(data) == 225):
+        if (len(data) == 225):
             return True
         return False
 
     @sync_to_async
     def write_result_to_db(self,  game_uuid, win_uuid, lose_uuid, result, friendly):
         def get_elo_difference(uuid_player, uuid_game, result):
-            game_status = GameStatus.objects.get(game=uuid_game, player=uuid_player)
-            uuid_opponent = self.get_opponent_sync(uuid_player=uuid_player, uuid_game=uuid_game, friendly=False)
-            opponent = GameStatus.objects.get(player=uuid_opponent, game=uuid_game)
+            game_status = GameStatus.objects.get(
+                game=uuid_game, player=uuid_player)
+            uuid_opponent = self.get_opponent_sync(
+                uuid_player=uuid_player, uuid_game=uuid_game, friendly=False)
+            opponent = GameStatus.objects.get(
+                player=uuid_opponent, game=uuid_game)
             elo_opponent = opponent.elo
             games = GameStatus.objects.filter(player_id=uuid_player)
             count_win = 0
@@ -545,84 +566,99 @@ class GameConsumer(AsyncWebsocketConsumer):
                     count_lose += 1
                 elif game.result == "draw":
                     count_draw += 1
-            if(result == "win"):
+            if (result == "win"):
                 sa = 1
-            elif(result == "lose"):
+            elif (result == "lose"):
                 sa = 0
-            elif(result == "draw"):
+            elif (result == "draw"):
                 sa = 0.5
             ea = 1/(1+10**((elo_opponent-game_status.elo)/400))
             saea = sa - ea
-            if(count_draw == 0 and count_lose == 0 and count_win == 0):
+            if (count_draw == 0 and count_lose == 0 and count_win == 0):
                 podilher = 0.5
             else:
-                podilher = (count_win+count_draw)/(count_win+count_lose+count_draw)
-            new_elo = float(game_status.elo) + 40*(saea*(1 + 0.5*(0.5-podilher)))
-            if(new_elo < 0):
+                podilher = (count_win+count_draw) / \
+                    (count_win+count_lose+count_draw)
+            new_elo = float(game_status.elo) + 40 * \
+                (saea*(1 + 0.5*(0.5-podilher)))
+            if (new_elo < 0):
                 new_elo = 0
             elodifference = new_elo - game_status.elo
             user = CustomUser.objects.filter(uuid=uuid_player).first()
             user.elo = user.elo + math.ceil(elodifference)
-            user.save() 
+            user.save()
             return math.ceil(elodifference)
 
-        if(not friendly):
-            if(result == "draw"):
+        if (not friendly):
+            if (result == "draw"):
                 elodifference = get_elo_difference(win_uuid, game_uuid, "draw")
-                gamestatus = GameStatus.objects.get(game=game_uuid, player=win_uuid)
+                gamestatus = GameStatus.objects.get(
+                    game=game_uuid, player=win_uuid)
                 gamestatus.result = "draw"
                 gamestatus.elodifference = elodifference
                 gamestatus.save()
-                elodifference = get_elo_difference(lose_uuid, game_uuid, "draw")
-                gamestatus = GameStatus.objects.get(game=game_uuid, player=lose_uuid)
+                elodifference = get_elo_difference(
+                    lose_uuid, game_uuid, "draw")
+                gamestatus = GameStatus.objects.get(
+                    game=game_uuid, player=lose_uuid)
                 gamestatus.result = "draw"
                 gamestatus.elodifference = elodifference
                 gamestatus.save()
             else:
                 elodifference = get_elo_difference(win_uuid, game_uuid, "win")
-                gamestatus = GameStatus.objects.get(game=game_uuid, player=win_uuid)
+                gamestatus = GameStatus.objects.get(
+                    game=game_uuid, player=win_uuid)
                 gamestatus.result = "win"
                 gamestatus.elodifference = elodifference
                 gamestatus.save()
-                elodifference = get_elo_difference(lose_uuid, game_uuid, "lose")
-                gamestatus = GameStatus.objects.get(game=game_uuid, player=lose_uuid)
+                elodifference = get_elo_difference(
+                    lose_uuid, game_uuid, "lose")
+                gamestatus = GameStatus.objects.get(
+                    game=game_uuid, player=lose_uuid)
                 gamestatus.result = "lose"
                 gamestatus.elodifference = elodifference
                 gamestatus.save()
         else:
-            if(self.data[game_uuid]["anonymous"] != ""):
-                if(result == "draw"):
-                    if(win_uuid == self.data[game_uuid]["anonymous"] or win_uuid == "anonymous"):
+            if (self.data[game_uuid]["anonymous"] != ""):
+                if (result == "draw"):
+                    if (win_uuid == self.data[game_uuid]["anonymous"] or win_uuid == "anonymous"):
                         player_uuid = lose_uuid
                     else:
                         player_uuid = win_uuid
-                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=player_uuid, result="unknown").first()
+                    gamestatus = GameStatus.objects.filter(
+                        game=game_uuid, player=player_uuid, result="unknown").first()
                     gamestatus.result = "draw"
                     gamestatus.save()
                 else:
-                    if(win_uuid == self.data[game_uuid]["anonymous"] or win_uuid == "anonymous"):
+                    if (win_uuid == self.data[game_uuid]["anonymous"] or win_uuid == "anonymous"):
                         player_uuid = lose_uuid
-                        gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid, result="unknown").first()
+                        gamestatus = GameStatus.objects.filter(
+                            game=game_uuid, player=lose_uuid, result="unknown").first()
                         gamestatus.result = "lose"
                         gamestatus.save()
-                    elif(lose_uuid == self.data[game_uuid]["anonymous"] or lose_uuid == "anonymous"):
+                    elif (lose_uuid == self.data[game_uuid]["anonymous"] or lose_uuid == "anonymous"):
                         player_uuid = win_uuid
-                        gamestatus = GameStatus.objects.filter(game=game_uuid, player=player_uuid, result="unknown").first()
+                        gamestatus = GameStatus.objects.filter(
+                            game=game_uuid, player=player_uuid, result="unknown").first()
                         gamestatus.result = "win"
                         gamestatus.save()
             else:
-                if(result == "draw"):
-                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=win_uuid, result="unknown").first()
+                if (result == "draw"):
+                    gamestatus = GameStatus.objects.filter(
+                        game=game_uuid, player=win_uuid, result="unknown").first()
                     gamestatus.result = "draw"
                     gamestatus.save()
-                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid, result="unknown").first()
+                    gamestatus = GameStatus.objects.filter(
+                        game=game_uuid, player=lose_uuid, result="unknown").first()
                     gamestatus.result = "draw"
                     gamestatus.save()
                 else:
-                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=win_uuid, result="unknown").first()
+                    gamestatus = GameStatus.objects.filter(
+                        game=game_uuid, player=win_uuid, result="unknown").first()
                     gamestatus.result = "win"
                     gamestatus.save()
-                    gamestatus = GameStatus.objects.filter(game=game_uuid, player=lose_uuid, result="unknown").first()
+                    gamestatus = GameStatus.objects.filter(
+                        game=game_uuid, player=lose_uuid, result="unknown").first()
                     gamestatus.result = "lose"
                     gamestatus.save()
 
@@ -637,12 +673,12 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     def create_new_game(self, uuid_user, uuid_game, friendly, anonymous):
         opponent = self.get_opponent_sync(uuid_user, uuid_game, False)
-        if(friendly):
+        if (friendly):
             game_type = "friendly"
             anonymousToken = anonymous
         else:
             game_type = "rating"
-            anonymousToken = None 
+            anonymousToken = None
         data = {
             "name": ''.join(random.choices(string.ascii_letters, k=10)),
             "gameType": game_type,
@@ -652,14 +688,16 @@ class GameConsumer(AsyncWebsocketConsumer):
         serializer = GameSerializer(data=data)
         if serializer.is_valid():
             game_instance = serializer.save()  # Save and keep reference
-        if(uuid_user == self.data[uuid_game]["anonymous"] or opponent == "anonymous"):
-            if(uuid_user == self.data[uuid_game]["anonymous"]):
+        if (uuid_user == self.data[uuid_game]["anonymous"] or opponent == "anonymous"):
+            if (uuid_user == self.data[uuid_game]["anonymous"]):
                 user = CustomUser.objects.get(uuid=opponent)
-                game_status1_symbol = GameStatus.objects.filter(player=opponent).first().symbol
+                game_status1_symbol = GameStatus.objects.filter(
+                    player=opponent).first().symbol
             else:
                 user = CustomUser.objects.get(uuid=uuid_user)
-                game_status1_symbol = GameStatus.objects.filter(player=uuid_user).first().symbol
-            if(game_status1_symbol == "X"):
+                game_status1_symbol = GameStatus.objects.filter(
+                    player=uuid_user).first().symbol
+            if (game_status1_symbol == "X"):
                 symbol = "O"
             else:
                 symbol = "X"
@@ -670,16 +708,18 @@ class GameConsumer(AsyncWebsocketConsumer):
                 "game": game_instance.uuid,  # Use instance instead of raw data
                 "elo": user.elo
             }
-            serializer_gamestatus = GameStatusSerializerCreate(data=gamestatus_data)
+            serializer_gamestatus = GameStatusSerializerCreate(
+                data=gamestatus_data)
             if serializer_gamestatus.is_valid():
                 serializer_gamestatus.save()
             else:
                 game_instance.delete()
         else:
             user1 = CustomUser.objects.get(uuid=uuid_user)
-            game_status1_symbol = GameStatus.objects.filter(player=uuid_user).first().symbol
+            game_status1_symbol = GameStatus.objects.filter(
+                player=uuid_user).first().symbol
             user2 = CustomUser.objects.get(uuid=opponent)
-            if(game_status1_symbol == "X"):
+            if (game_status1_symbol == "X"):
                 game_status2_symbol = "X"
                 game_status1_symbol = "O"
             else:
@@ -699,12 +739,14 @@ class GameConsumer(AsyncWebsocketConsumer):
                 "game": game_instance.uuid,  # Use instance instead of raw data
                 "elo": user2.elo
             }
-            serializer_gamestatus = GameStatusSerializerCreate(data=gamestatus_data1)
+            serializer_gamestatus = GameStatusSerializerCreate(
+                data=gamestatus_data1)
             if serializer_gamestatus.is_valid():
                 serializer_gamestatus.save()
             else:
                 game_instance.delete()
-            serializer_gamestatus = GameStatusSerializerCreate(data=gamestatus_data2)
+            serializer_gamestatus = GameStatusSerializerCreate(
+                data=gamestatus_data2)
             if serializer_gamestatus.is_valid():
                 serializer_gamestatus.save()
             else:
@@ -714,8 +756,9 @@ class GameConsumer(AsyncWebsocketConsumer):
     def save_win_board(self, game_uuid, win_probality):
         for i in range(len(win_probality)):
             for j in range(len(win_probality[0])):
-                if(win_probality[i][j] == "Xw" or win_probality[i][j] == "Ow"):
-                    board = Board.objects.filter(game=game_uuid, row=i, column=j).first()
+                if (win_probality[i][j] == "Xw" or win_probality[i][j] == "Ow"):
+                    board = Board.objects.filter(
+                        game=game_uuid, row=i, column=j).first()
                     board.symbol = win_probality[i][j]
                     board.save()
 
