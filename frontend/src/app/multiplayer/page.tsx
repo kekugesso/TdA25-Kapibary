@@ -1,6 +1,7 @@
 "use client";
 import { useAuth } from "@/components/core/AuthProvider";
 import { useErrorModal } from "@/components/core/ErrorModalProvider";
+import Loading from "@/components/core/Loading";
 import GameContinueModal from "@/components/multiplayer/game/GameContinueModal";
 import GameCreationModal from "@/components/multiplayer/lobby/GameCreationModal";
 import GameFindModal from "@/components/multiplayer/lobby/GameFindModal";
@@ -9,28 +10,23 @@ import GameJoinModal from "@/components/multiplayer/lobby/GameJoinModal";
 import GameTypeCard from "@/components/multiplayer/lobby/GameTypeCard";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { setCookie } from "cookies-next/client";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
-export default function MultiplayerLobby({
-  searchParams,
-}: {
-  searchParams: Promise<{ game?: Promise<string> }>;
-}) {
-  useEffect(() => {
-    async function loadGameCode() {
-      try {
-        const resolvedParams = await searchParams; // Resolve the params promise
-        const resolvedGameCode = await resolvedParams.game; // Resolve the nested game promise
-        if (resolvedGameCode) setGameCode(Number.parseInt(resolvedGameCode));
-      } catch (error) {
-        console.error("Failed to load uuid:", error);
-      }
-    }
-    loadGameCode();
-  }, [searchParams]);
+export default function MultiplayerLobbyPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <MultiplayerLobby />
+    </Suspense>
+  );
+}
 
-  const [gameCode, setGameCode] = useState<number | undefined>(undefined);
+function MultiplayerLobby() {
+  const searchParams = useSearchParams();
+  const [gameCode, setGameCode] = useState<number | undefined>(() => {
+    const pageParam = searchParams.get("game");
+    return pageParam ? Number.parseInt(pageParam) : undefined;
+  });
   const router = useRouter();
   const { isLogged, getToken } = useAuth();
   const { displayMessage, displayError } = useErrorModal();
