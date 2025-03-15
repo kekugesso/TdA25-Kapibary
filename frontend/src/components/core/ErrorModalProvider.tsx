@@ -96,7 +96,7 @@ export const ErrorModalProvider = ({ children }: { children: ReactNode }) => {
           <ModalHeader>Error</ModalHeader>
           <ModalBody>
             <p className="text-center text-balance font-medium">
-              {error.message || "An 'unknown' error occurred."}
+              {error.message || "Stala se neočekávaná chyba."}
             </p>
           </ModalBody>
           <ModalFooter>
@@ -104,7 +104,7 @@ export const ErrorModalProvider = ({ children }: { children: ReactNode }) => {
               onClick={handleClose}
               className="bg-blue-light dark:bg-blue-dark font-semibold rounded-lg py-2 px-6"
             >
-              {options?.overrideButtonMessage || "Go back"}
+              {options?.overrideButtonMessage || "Jít zpět"}
             </button>
           </ModalFooter>
         </Modal>

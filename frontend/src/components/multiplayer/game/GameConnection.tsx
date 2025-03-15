@@ -4,13 +4,20 @@ import { useCallback, useRef, useState, useEffect } from "react";
 export default function useGameConnection({
   uuid,
   handleMessage,
+  isError,
 }: {
   uuid: string;
   handleMessage: (message: MessageEvent) => void;
+  isError: boolean;
 }) {
   const { displayMessage } = useErrorModal();
 
   const hardStop = useRef(false);
+
+  useEffect(() => {
+    if (isError) hardStop.current = true;
+  }, [isError]);
+
   const websocketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
   const realAttemptCount = useRef(0);

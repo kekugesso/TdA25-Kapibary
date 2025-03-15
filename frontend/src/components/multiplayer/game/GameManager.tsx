@@ -8,6 +8,7 @@ import { GameEnd, SymbolMessage } from "@/types/multiplayer/GameEnd";
 import GameEndModal from "@/components/multiplayer/game/GameEndModal";
 import {
   GameDraw,
+  GameError,
   GameMove,
   GameRematch,
   GameSurrender,
@@ -71,6 +72,7 @@ export function GameManager({
   const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
 
   const [userSymbol, setUserSymbol] = useState<"X" | "O" | null>(null);
   const [data, setData] = useState<MultiplayerGame | null>(null);
@@ -181,6 +183,18 @@ export function GameManager({
   const handleSurrender = useCallback((surrenderMessage: GameWantSurrender) => {
     setGameEndData(surrenderMessage.end);
   }, []);
+  const handleError = useCallback(
+    (error: GameError) => {
+      console.error("Server error:", error.message);
+      setIsError(true);
+      displayMessage(error.message, {
+        disableDefaultButtonAction: true,
+        overrideButtonMessage: "Zpět do lobby",
+        onClose: () => router.push("/multiplayer"),
+      });
+    },
+    [displayMessage],
+  );
 
   // handle game end
   useEffect(() => {
@@ -208,6 +222,8 @@ export function GameManager({
           return handleSurrender(message as GameWantSurrender);
         case MessageType.time:
           return handleTime(message as GetGameTime);
+        case MessageType.error:
+          return handleError(message as GameError);
         default:
           console.error("Failed to parse WebSocket message:", event.data);
           displayMessage("Invalid message type from server");
@@ -220,6 +236,7 @@ export function GameManager({
       handleRematch,
       handleSurrender,
       handleTime,
+      handleError,
       displayMessage,
     ],
   );
@@ -233,6 +250,7 @@ export function GameManager({
   } = useGameConnection({
     uuid,
     handleMessage,
+    isError,
   });
 
   useEffect(() => {

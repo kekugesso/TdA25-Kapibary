@@ -52,3 +52,7 @@ export type GetGameTime = {
   time?: GameTime;
   end: GameEnd | null;
 };
+
+export type GameError = {
+  message: string;
+};

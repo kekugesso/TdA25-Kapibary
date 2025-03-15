@@ -5,4 +5,5 @@ export enum MessageType {
   rematch = "rematch",
   surrender = "surrender",
   time = "time",
+  error = "error",
 }
