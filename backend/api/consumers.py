@@ -74,6 +74,11 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         uuid = self.scope["url_route"]["kwargs"]["uuid"]
+        token = await self.get_user_from_token()
+        if(token is not None):
+            control_token = await self.is_valid_token(token)
+            if not control_token:
+                await self.disconnect_anonymous(uuid)
         await self.channel_layer.group_discard(f"game_{uuid}", self.channel_name)
 
     async def receive(self, text_data):
@@ -110,6 +115,11 @@ class GameConsumer(AsyncWebsocketConsumer):
                             data["draw"] = False
                 else:
                     send = False
+            else:
+                send = False
+        elif(data.get("cancel") == True):
+            if(not await self.if_two_players_in_game(uuid) and await self.control_if_player(uuid, uuid_player)):
+                await self.cancel_game(uuid)
             else:
                 send = False
         elif(data.get("time") == True):
@@ -577,7 +587,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             elodifference = new_elo - game_status.elo
             user = CustomUser.objects.filter(uuid=uuid_player).first()
             user.elo = user.elo + math.ceil(elodifference)
-            user.save() 
+            user.save()
             return math.ceil(elodifference)
 
         if(not friendly):
@@ -665,7 +675,7 @@ class GameConsumer(AsyncWebsocketConsumer):
 
         serializer = GameSerializer(data=data)
         if serializer.is_valid():
-            game_instance = serializer.save()  # Save and keep reference
+            game_instance = serializer.save()
         if(uuid_user == self.data[uuid_game]["anonymous"] or opponent == "anonymous"):
             if(uuid_user == self.data[uuid_game]["anonymous"]):
                 user = CustomUser.objects.get(uuid=opponent)
@@ -735,3 +745,24 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     def if_cell_exist(self, game_uuid, row, column):
         return Board.objects.filter(game=game_uuid, row=row, column=column).exists()
+
+
+    @sync_to_async
+    def if_two_players_in_game(self, game_uuid):
+        gamestatus = GameStatus.objects.filter(game=game_uuid)
+        serializer = GameStatusSerializerView(gamestatus, many=True)
+        players = []
+        for gamestatus in serializer.data:
+            players.append(gamestatus["player"]["uuid"])
+        return len(players) == 2 or (len(players) == 1 and self.data[game_uuid]["anonymous"] != "")
+
+    @sync_to_async
+    def cancel_game(self, game_uuid):
+        game = Game.objects.get(uuid=game_uuid)
+        game.delete()
+
+    @sync_to_async
+    def disconnect_anonymous(self, game_uuid):
+        game = Game.objects.get(uuid=game_uuid)
+        game.anonymousToken = None
+        game.save()
