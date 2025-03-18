@@ -58,8 +58,10 @@ class GameConsumer(AsyncWebsocketConsumer):
             self.data[uuid]["anonymous"] = game.anonymousToken
         gamedata["type"] = "initData"
         uuid_player = await self.get_user_from_token()
+        if(await self.is_valid_token(uuid_player)):
+            uuid_player = await self.get_token(uuid_player)
         if (await self.control_if_player(uuid, uuid_player) or uuid_player == self.data[uuid]["anonymous"]):
-            if(self.data[uuid]["end"] is None):
+            if(self.data[uuid]["end"] is None and self.data[uuid]["friendly"]):
                 await self.channel_layer.group_send(
                         f"game_{uuid}",
                         {
@@ -70,15 +72,10 @@ class GameConsumer(AsyncWebsocketConsumer):
             else:
                 await self.send(text_data=json.dumps(gamedata))
         else:
+            gamedata["spectator"] = True
             await self.send(text_data=json.dumps(gamedata))
 
     async def disconnect(self, close_code):
-        uuid = self.scope["url_route"]["kwargs"]["uuid"]
-        token = await self.get_user_from_token()
-        if(token is not None):
-            control_token = await self.is_valid_token(token)
-            if not control_token:
-                await self.disconnect_anonymous(uuid)
         await self.channel_layer.group_discard(f"game_{uuid}", self.channel_name)
 
     async def receive(self, text_data):

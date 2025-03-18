@@ -528,12 +528,11 @@ class FreeplayGameView(APIView):
         game_statuses = GameStatus.objects.filter(game=game.uuid)
         if game is None:
             return Response({"message": "Game not found"}, status=404)
-        if(request.user.is_authenticated == False and game.anonymousToken is None and len(game_statuses) == 1):
+        if(request.user.is_authenticated == False):
             characters = string.ascii_lowercase + string.digits
             authtoken = ''.join(random.choices(characters, k=40))
             game.anonymousToken = authtoken
             game.save()
-            control = True
         if(request.user.is_authenticated == True and game.anonymousToken is None):
             gamestatus = GameStatus.objects.filter(game=game.uuid).first()
             if(gamestatus.player.uuid == request.user.uuid):
@@ -555,8 +554,7 @@ class FreeplayGameView(APIView):
                 return Response(serializer_gamestatus.errors, status=400)
         serializer = GameSerializerFreeplayView(game)
         result = serializer.data
-        if(control == True):
-            result["anonymousToken"] = game.anonymousToken
+        result["authtoken"] = game.anonymousToken
         return Response(result, status=200)
 
     def post(self, request):
