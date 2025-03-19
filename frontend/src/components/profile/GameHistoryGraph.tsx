@@ -11,9 +11,12 @@ export default function GameHistoryGraph({
 }) {
   const { theme } = useTheme();
   if (!gameHistory) return <></>;
-  const sortedHistory = [...gameHistory].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-  );
+  const sortedHistory = [...gameHistory]
+    .filter((game) => game.elo_change !== null)
+    .sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
 
   const svgWidth = 1000;
   const svgHeight = 300;
