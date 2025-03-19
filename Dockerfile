@@ -1,4 +1,4 @@
-FROM python:3.10-alpine AS backend
+FROM python:3.12-alpine AS backend
 
 WORKDIR /app
 
@@ -21,7 +21,7 @@ RUN touch /app/backend/db.sqlite3 && \
 
 
 # --- Frontend Stage ---
-FROM node:18-alpine AS frontend
+FROM node:20-alpine AS frontend
 
 WORKDIR /app
 
@@ -33,7 +33,7 @@ RUN npm install -f && npm run build
 
 
 # --- Final Stage ---
-FROM python:3.10-alpine AS final
+FROM python:3.12-alpine AS final
 
 WORKDIR /app
 
