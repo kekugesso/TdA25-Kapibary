@@ -54,6 +54,7 @@ export interface GameManagerContextProps {
 
   turn: "X" | "O" | null;
   userSymbol: "X" | "O" | null;
+  userType: "player" | "spectator" | null
   userTime: number | null;
   opponentTime: number | null;
 }
@@ -75,10 +76,13 @@ export function GameManager({
   const [isError, setIsError] = useState(false);
 
   const [userSymbol, setUserSymbol] = useState<"X" | "O" | null>(null);
+  const [userType, setUserType] = useState<"player" | "spectator" | null>(null);
+
   const [data, setData] = useState<MultiplayerGame | null>(null);
   const [gameBoard, setGameBoard] = useState<BoardType>([]);
   const [gameEndData, setGameEndData] = useState<GameEnd | null>(null);
   const [endData, setEndData] = useState<SymbolMessage | null>(null);
+
   const [turn, setTurn] = useState<"X" | "O" | null>(null);
   const [gameEnded, setGameEnded] = useState(false);
 
@@ -105,28 +109,30 @@ export function GameManager({
     (data: MultiplayerGame) => {
       setData(data);
       setGameBoard(data.board);
-
-      const userData = data.game_status.find(
-        (status) => status.player.uuid === user?.uuid,
-      );
       setGameEnded(data.game_status[0].result !== GameResult.UNKNOWN);
-      setUserSymbol(
-        userData !== undefined
-          ? userData.symbol
-          : data.game_status[0].symbol === "X"
-            ? "O"
-            : "X",
-      );
+
+      const userSymbol =
+        data.game_status.find((status) => status.player.uuid === user?.uuid)
+          ?.symbol ?? (data.game_status[0].symbol === "X" ? "O" : "X");
+      setUserSymbol(userSymbol);
       setTurn(() =>
         data.board.flat().filter((x) => x === "X" || x === "Xw").length >
         data.board.flat().filter((o) => o === "O" || o === "Ow").length
           ? "O"
           : "X",
       );
-      if (data.time) setTimeData(data.time);
+      if (data.time) {
+        setUserTime(userSymbol === "X" ? data.time.X.time : data.time.O.time);
+        setOpponentTime(
+          userSymbol === "X" ? data.time.O.time : data.time.X.time,
+        );
+      }
+
+      if (data.spectator) setUserType("spectator");
+      else setUserType("player");
       setIsLoading(false);
     },
-    [user, setTimeData],
+    [user],
   );
 
   const handleMove = useCallback(
@@ -155,6 +161,7 @@ export function GameManager({
 
   const handleDraw = useCallback(
     (drawMessage: GameWantDraw) => {
+      if (!userType || userType === "spectator") return;
       if (!drawMessage.draw && wantDraw) {
         setRejectDraw(true);
         setWantDraw(false);
@@ -164,8 +171,9 @@ export function GameManager({
       if (drawMessage.draw_to === (isLogged ? user?.uuid : "anonymous"))
         setOpenDrawModal(true);
     },
-    [isLogged, user, wantDraw],
+    [isLogged, user, wantDraw, userType],
   );
+
   const handleRematch = useCallback(
     (rematchMessage: GameWantRematch) => {
       if (!rematchMessage.rematch && wantRematch) {
@@ -175,10 +183,11 @@ export function GameManager({
       }
       if (rematchMessage.new_game)
         router.push(`/multiplayer/${rematchMessage.new_game}`);
+      if (!userType || userType === "spectator") return;
       if (rematchMessage.rematch_to === (isLogged ? user?.uuid : "anonymous"))
         setOpenRematchModal(true);
     },
-    [isLogged, user, router, wantRematch],
+    [isLogged, user, router, wantRematch, userType],
   );
   const handleSurrender = useCallback((surrenderMessage: GameWantSurrender) => {
     setGameEndData(surrenderMessage.end);
@@ -193,7 +202,7 @@ export function GameManager({
         onClose: () => router.push("/multiplayer"),
       });
     },
-    [displayMessage],
+    [displayMessage, router],
   );
 
   // handle game end
@@ -255,6 +264,7 @@ export function GameManager({
 
   useEffect(() => {
     if (!getCookie("anonymous")) return;
+    if (!userType || userType === "spectator") return;
 
     const cycleTimeMs = 1000 * 60 * 5; // 5 minutes
     const setCookies = () => {
@@ -274,7 +284,7 @@ export function GameManager({
       cycleTimeMs - 1000 * 30,
     ); // 30 seconds before expiration
     return () => clearInterval(anonymousLifeCycle);
-  }, []);
+  }, [userType]);
 
   // create first connection
   useEffect(() => {
@@ -330,6 +340,7 @@ export function GameManager({
         board: gameBoard,
         endData: gameEndData,
         userSymbol,
+        userType,
         turn,
 
         userTime,
@@ -339,16 +350,20 @@ export function GameManager({
         wantDraw,
 
         makeMove: (x: number, y: number) => {
+          if (!userType || userType === "spectator") return;
           sendMessage({ row: y, column: x } as GameMove);
         },
         surrender: () => {
+          if (!userType || userType === "spectator") return;
           sendMessage({ surrender: true } as GameSurrender);
         },
         draw: () => {
+          if (!userType || userType === "spectator") return;
           setWantDraw(true);
           sendMessage({ draw: true } as GameDraw);
         },
         rematch: () => {
+          if (!userType || userType === "spectator") return;
           setWantRematch(true);
           sendMessage({ rematch: true } as GameRematch);
         },
@@ -356,11 +371,12 @@ export function GameManager({
     >
       {children}
       <GameEndModal
-        open={!!endData}
+        open={!!endData && userType !== "spectator"}
         title={endData?.result ?? ""}
         turn={userSymbol ?? "X"}
         description={endData?.message ?? ""}
         rematchAction={() => {
+          if (!userType || userType === "spectator") return;
           setEndData(null);
           setWantRematch(true);
           sendMessage({ rematch: true } as GameRematch);
@@ -372,11 +388,13 @@ export function GameManager({
         title="Odveta"
         description="Můžete si okamžitě zahrát odvetu, s odvetou musí souhlasit oba hráči. Chcete proti hráči znovu soupeřit?"
         acceptAction={() => {
+          if (!userType || userType === "spectator") return;
           setOpenRematchModal(false);
           setWantRematch(true);
           sendMessage({ rematch: true } as GameRematch);
         }}
         cancelAction={() => {
+          if (!userType || userType === "spectator") return;
           setOpenRematchModal(false);
           setEndData(null);
           sendMessage({ rematch: false } as GameRematch);
@@ -393,10 +411,12 @@ export function GameManager({
         title="Nabídka remízy"
         description="Váš soupeř nabízí ukončit hru remízou. Chcete hru předčasně ukončit remízou?"
         acceptAction={() => {
+          if (!userType || userType === "spectator") return;
           setOpenDrawModal(false);
           sendMessage({ draw: true } as GameDraw);
         }}
         cancelAction={() => {
+          if (!userType || userType === "spectator") return;
           setOpenDrawModal(false);
           sendMessage({ draw: false } as GameDraw);
         }}

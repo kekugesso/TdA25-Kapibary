@@ -9,6 +9,7 @@ export type MultiplayerGame = {
   gameCode: string;
   game_status: GameStatus[];
   time?: GameTime;
+  spectator?: boolean;
 };
 
 export type GameStatus = {
