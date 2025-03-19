@@ -19,6 +19,7 @@ export default function useGameConnection({
   }, [isError]);
 
   const websocketRef = useRef<WebSocket | null>(null);
+  const attemptReconnectRef = useRef<() => void>(() => {});
   const reconnectTimeoutRef = useRef<number | null>(null);
   const realAttemptCount = useRef(0);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
@@ -35,6 +36,11 @@ export default function useGameConnection({
       websocketRef.current = null;
     }
   }, []);
+
+  // Handle change of handleMessage function
+  useEffect(() => {
+    if (websocketRef.current) websocketRef.current.onmessage = handleMessage;
+  }, [handleMessage]);
 
   const createConnection = useCallback(() => {
     if (hardStop.current) return;
@@ -70,7 +76,7 @@ export default function useGameConnection({
       console.log("Disconnected from game server");
       setIsLoading(false);
       setIsConnected(false);
-      attemptReconnect();
+      attemptReconnectRef.current();
     };
 
     websocket.onerror = (error) => {
@@ -81,7 +87,7 @@ export default function useGameConnection({
     };
 
     websocket.onmessage = handleMessage;
-  }, [uuid, handleMessage]);
+  }, [uuid, handleMessage, cleanupWebSocket]);
 
   const attemptReconnect = useCallback(() => {
     if (hardStop.current) return;
@@ -110,6 +116,10 @@ export default function useGameConnection({
   }, [createConnection, displayMessage, realAttemptCount]);
 
   useEffect(() => {
+    attemptReconnectRef.current = attemptReconnect;
+  }, [attemptReconnect]);
+
+  useEffect(() => {
     if (hardStop.current) return;
     const handleOnline = () => {
       console.log("Network restored. Attempting to reconnect...");
@@ -131,15 +141,13 @@ export default function useGameConnection({
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, []);
+  }, [createConnection]);
 
   const sendMessage = useCallback(
     (message: object) => {
-      if (websocketRef.current?.readyState === WebSocket.OPEN) {
+      if (websocketRef.current?.readyState === WebSocket.OPEN)
         websocketRef.current.send(JSON.stringify(message));
-      } else {
-        displayMessage("Failed to contact server!");
-      }
+      else displayMessage("Failed to contact server!");
     },
     [displayMessage],
   );
