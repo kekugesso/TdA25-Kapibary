@@ -1,22 +1,34 @@
-import uuid
 import random
-import string
 import re
-
+import string
+import uuid
 from datetime import timedelta
-from django.utils import timezone
+
 from django.forms.models import model_to_dict
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
-from rest_framework.pagination import PageNumberPagination
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import Game, Board, CustomUser, GameStatus, QueryUsers
-from .serializers import GameSerializer, BoardSerializer, CustomUserSerializerView, CustomUserSerializerCreate, GameStatusSerializerCreate, GameSerializerMultiplayer, GameStatusForUserSerializerView, QueryUsersSerializerView, QueryUsersSerializerCreate, GameSerializerFreeplayView
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from .filters import UserFilter
+from .models import Board, CustomUser, Game, GameStatus, QueryUsers
+from .serializers import (
+    BoardSerializer,
+    CustomUserSerializerCreate,
+    CustomUserSerializerView,
+    GameSerializer,
+    GameSerializerFreeplayView,
+    GameSerializerMultiplayer,
+    GameStatusForUserSerializerView,
+    GameStatusSerializerCreate,
+    QueryUsersSerializerCreate,
+    QueryUsersSerializerView
+)
 
 
 class CustomPagination(PageNumberPagination):
@@ -525,6 +537,8 @@ class FreeplayGameView(APIView):
         data = request.data
         control = False
         game = Game.objects.filter(gameCode=data["code"]).first()
+        if game is None:
+            return Response({"message": "Game not found"}, status=404)
         game_statuses = GameStatus.objects.filter(game=game.uuid)
         if game is None:
             return Response({"message": "Game not found"}, status=404)
